@@ -7,9 +7,16 @@ period, asks for the summary and lays it out.
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import typer
 
+from cubit.cli.completion import (
+    complete_any_project,
+    complete_category,
+    complete_client,
+    complete_format,
+)
 from cubit.cli.context import get_context
 from cubit.cli.output import (
     ENTRY_COLUMNS,
@@ -25,24 +32,33 @@ from cubit.cli.output import (
 )
 from cubit.cli.parsing import parse_day
 from cubit.core import (
+    FORMATS,
     Config,
     CubitError,
+    Document,
     Storage,
     Summary,
+    category_document,
     category_report,
+    client_document,
     client_report,
     display_category,
     find_entries,
     normalize_category,
+    project_document,
     project_report,
+    render,
     resolve_period,
     summarize,
+    summary_document,
 )
 
 app = typer.Typer(
     help="Weekly, monthly, per-project and per-client summaries.", no_args_is_help=True
 )
 
+FORMAT_HELP = f"Write the report as one of {', '.join(FORMATS)} instead of a table."
+OUTPUT_HELP = "Write to this file instead of the terminal."
 RANGE_HELP_FROM = "Override the period: first date (YYYY-MM-DD)."
 RANGE_HELP_TO = "Override the period: last date (YYYY-MM-DD)."
 CATEGORY_HELP = "Only this category, without the #."
@@ -51,6 +67,25 @@ CATEGORY_HELP = "Only this category, without the #."
 def _load(ctx: typer.Context) -> tuple[Storage, Config]:
     storage = get_context(ctx).require_folder()
     return storage, storage.load_config()
+
+
+def _export(document: Document, fmt: str, output: str | None) -> bool:
+    """Write the report out in another format, if one was asked for (FR-23).
+
+    Returns True when it handled the output, so the caller skips the tables.
+    """
+    if fmt == "text":
+        return False
+
+    text = render(document, fmt)
+    if output:
+        path = Path(output)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        echo(muted(f"Wrote {path}"))
+    else:
+        typer.echo(text, nl=False)
+    return True
 
 
 def _custom_range(since: str | None, until: str | None) -> tuple[date, date] | None:
@@ -112,10 +147,16 @@ def week(
     ),
     since: str | None = typer.Option(None, "--from", help=RANGE_HELP_FROM),
     until: str | None = typer.Option(None, "--to", help=RANGE_HELP_TO),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     by_category: bool = typer.Option(
         False, "--by-category", help="Also break each project down by category."
     ),
+    fmt: str = typer.Option(
+        "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
+    ),
+    output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
 ) -> None:
     """Weekly summary: hours by project and by day."""
     # FR-17, FR-21, FR-54, FR-60.
@@ -133,6 +174,13 @@ def week(
     )
 
     title = "Custom range" if custom else f"Week {start.isocalendar().week}, {start.year}"
+    if _export(
+        summary_document(summary, kind="week", label=title, currency=config.currency),
+        fmt,
+        output,
+    ):
+        return
+
     _period_header(title, start, end, _totals(summary, config.currency))
     if category:
         echo(muted(f"filtered to {display_category(normalize_category(category))}"))
@@ -153,10 +201,16 @@ def month(
     ),
     since: str | None = typer.Option(None, "--from", help=RANGE_HELP_FROM),
     until: str | None = typer.Option(None, "--to", help=RANGE_HELP_TO),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     by_category: bool = typer.Option(
         False, "--by-category", help="Also break each project down by category."
     ),
+    fmt: str = typer.Option(
+        "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
+    ),
+    output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
 ) -> None:
     """Monthly summary: hours by project, client and week."""
     # FR-18, FR-21, FR-54, FR-60.
@@ -173,6 +227,13 @@ def month(
     )
 
     title = "Custom range" if custom else start.strftime("%B %Y")
+    if _export(
+        summary_document(summary, kind="month", label=title, currency=config.currency),
+        fmt,
+        output,
+    ):
+        return
+
     _period_header(title, start, end, _totals(summary, config.currency))
     if category:
         echo(muted(f"filtered to {display_category(normalize_category(category))}"))
@@ -189,11 +250,17 @@ def month(
 @app.command("project")
 def project(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
     since: str | None = typer.Option(None, "--from", help="First date (YYYY-MM-DD)."),
     until: str | None = typer.Option(None, "--to", help="Last date (YYYY-MM-DD)."),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     entries: bool = typer.Option(False, "--entries", help="Also list the entries."),
+    fmt: str = typer.Option(
+        "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
+    ),
+    output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
 ) -> None:
     """One project: hours, budget, earnings and categories."""
     # FR-19, FR-21, FR-22, FR-49.
@@ -212,6 +279,18 @@ def project(
         end=end,
         warning_percent=config.budget_warning_percent,
     )
+
+    if _export(
+        project_document(
+            report,
+            currency=config.currency,
+            projects=storage.load_projects_map(),
+            entries=entries,
+        ),
+        fmt,
+        output,
+    ):
+        return
 
     echo(heading(f"{target.id}  {target.name}"))
     if target.client:
@@ -242,10 +321,18 @@ def project(
 @app.command("client")
 def client(
     ctx: typer.Context,
-    name: str = typer.Argument(..., help="Client name, as written on the projects."),
+    name: str = typer.Argument(
+        ..., help="Client name, as written on the projects.", autocompletion=complete_client
+    ),
     since: str | None = typer.Option(None, "--from", help="First date (YYYY-MM-DD)."),
     until: str | None = typer.Option(None, "--to", help="Last date (YYYY-MM-DD)."),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
+    fmt: str = typer.Option(
+        "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
+    ),
+    output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
 ) -> None:
     """One client: hours and earnings across their projects."""
     # FR-20, FR-21.
@@ -266,6 +353,9 @@ def client(
             hint="Run 'cubit project list --all' to see the clients you have.",
         )
 
+    if _export(client_document(report, currency=config.currency), fmt, output):
+        return
+
     echo(heading(report.client))
     echo(
         f"{format_duration(report.total.minutes)} ({report.total.hours} h)"
@@ -279,9 +369,15 @@ def client(
 @app.command("category")
 def category(
     ctx: typer.Context,
-    name: str = typer.Argument(..., help="Category name, without the #."),
+    name: str = typer.Argument(
+        ..., help="Category name, without the #.", autocompletion=complete_category
+    ),
     since: str | None = typer.Option(None, "--from", help="First date (YYYY-MM-DD)."),
     until: str | None = typer.Option(None, "--to", help="Last date (YYYY-MM-DD)."),
+    fmt: str = typer.Option(
+        "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
+    ),
+    output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
 ) -> None:
     """One category across every project that uses it."""
     # FR-60, FR-61.
@@ -296,6 +392,9 @@ def category(
         start=start,
         end=end,
     )
+
+    if _export(category_document(report, currency=config.currency), fmt, output):
+        return
 
     echo(heading(display_category(report.category)))
     if not report.entries:

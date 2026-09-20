@@ -9,6 +9,7 @@ from datetime import date
 
 import typer
 
+from cubit.cli.completion import complete_category, complete_project
 from cubit.cli.context import get_context
 from cubit.cli.output import (
     ENTRY_COLUMNS,
@@ -80,8 +81,12 @@ def _resolve_category(
 
 def start(
     ctx: typer.Context,
-    project: str = typer.Argument(..., help="Project id to log against."),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    project: str = typer.Argument(
+        ..., help="Project id to log against.", autocompletion=complete_project
+    ),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     note: str = typer.Option("", "--message", "-m", help="What you are working on."),
     force: bool = typer.Option(False, "--force", help="Allow an archived project."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip every prompt."),
@@ -149,9 +154,13 @@ def cancel(ctx: typer.Context) -> None:
 
 def add(
     ctx: typer.Context,
-    project: str = typer.Argument(..., help="Project id to log against."),
+    project: str = typer.Argument(
+        ..., help="Project id to log against.", autocompletion=complete_project
+    ),
     duration: str = typer.Argument(..., help="How long, e.g. 90m, 1h30m, 1.5h or 1:30."),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     note: str = typer.Option("", "--message", "-m", help="What the time was spent on."),
     day: str | None = typer.Option(None, "--date", help="Date (YYYY-MM-DD). Default today."),
     start_at: str | None = typer.Option(None, "--start", help="Start time (HH:MM), optional."),
@@ -186,9 +195,13 @@ def list_entries(
     ctx: typer.Context,
     since: str | None = typer.Option(None, "--from", help="First date (YYYY-MM-DD)."),
     until: str | None = typer.Option(None, "--to", help="Last date (YYYY-MM-DD)."),
-    project: str | None = typer.Option(None, "--project", "-p", help="Only this project id."),
+    project: str | None = typer.Option(
+        None, "--project", "-p", help="Only this project id.", autocompletion=complete_project
+    ),
     client: str | None = typer.Option(None, "--client", help="Only this client's projects."),
-    category: str | None = typer.Option(None, "--category", "-c", help="Only this category."),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help="Only this category.", autocompletion=complete_category
+    ),
     show_all: bool = typer.Option(False, "--all", help="Every entry, not just this month."),
     limit: int | None = typer.Option(None, "--limit", help="Show at most this many."),
 ) -> None:
@@ -239,8 +252,12 @@ def edit(
     entry_id: str = typer.Argument(..., help="Id of the entry to change."),
     duration: str | None = typer.Option(None, "--duration", "-d", help="New duration."),
     day: str | None = typer.Option(None, "--date", help="New date (YYYY-MM-DD)."),
-    project: str | None = typer.Option(None, "--project", "-p", help="Move to this project."),
-    category: str | None = typer.Option(None, "--category", "-c", help=CATEGORY_HELP),
+    project: str | None = typer.Option(
+        None, "--project", "-p", help="Move to this project.", autocompletion=complete_project
+    ),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help=CATEGORY_HELP, autocompletion=complete_category
+    ),
     clear_category: bool = typer.Option(False, "--no-category", help="Remove the category."),
     note: str | None = typer.Option(None, "--message", "-m", help="New note."),
     start_at: str | None = typer.Option(None, "--start", help="New start time (HH:MM)."),

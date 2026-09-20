@@ -6,6 +6,7 @@ from datetime import date
 
 import typer
 
+from cubit.cli.completion import complete_any_project, complete_category
 from cubit.cli.context import get_context
 from cubit.cli.output import (
     Column,
@@ -122,7 +123,7 @@ def list_projects(
 @app.command("show")
 def show(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
 ) -> None:
     """Show one project with its rate history and categories."""
     # FR-11.
@@ -156,7 +157,9 @@ def show(
 @app.command("edit")
 def edit(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id. The id itself cannot change."),
+    project_id: str = typer.Argument(
+        ..., help="Project id. The id itself cannot change.", autocompletion=complete_any_project
+    ),
     name: str | None = typer.Option(None, "--name", "-n", help="New name."),
     client: str | None = typer.Option(None, "--client", help="New client."),
     budget: str | None = typer.Option(None, "--budget", help="New hour budget."),
@@ -187,7 +190,7 @@ def edit(
 @app.command("rate")
 def rate(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
     amount: str = typer.Argument(..., help="Hourly rate, e.g. 105 or 105.50."),
     valid_from: str | None = typer.Option(
         None, "--from", help="Date the rate starts. Default today."
@@ -206,7 +209,7 @@ def rate(
 @app.command("archive")
 def archive(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
 ) -> None:
     """Archive a project, keeping its entries."""
     # FR-13.
@@ -218,7 +221,7 @@ def archive(
 @app.command("unarchive")
 def unarchive(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
 ) -> None:
     """Bring an archived project back."""
     # FR-13.
@@ -230,7 +233,7 @@ def unarchive(
 @app.command("rm")
 def remove(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
     yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask."),
 ) -> None:
     """Delete a project that has no entries."""
@@ -245,8 +248,10 @@ def remove(
 @category_app.command("add")
 def category_add(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
-    name: str = typer.Argument(..., help="Category name, without the #."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
+    name: str = typer.Argument(
+        ..., help="Category name, without the #.", autocompletion=complete_category
+    ),
 ) -> None:
     """Register a category on a project up front."""
     # FR-44.
@@ -259,7 +264,7 @@ def category_add(
 @category_app.command("list")
 def category_list(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
 ) -> None:
     """List a project's categories, most recently used first."""
     # FR-46.
@@ -276,8 +281,10 @@ def category_list(
 @category_app.command("rm")
 def category_remove(
     ctx: typer.Context,
-    project_id: str = typer.Argument(..., help="Project id."),
-    name: str = typer.Argument(..., help="Category name, without the #."),
+    project_id: str = typer.Argument(..., help="Project id.", autocompletion=complete_any_project),
+    name: str = typer.Argument(
+        ..., help="Category name, without the #.", autocompletion=complete_category
+    ),
 ) -> None:
     """Unregister a category. Entries that use it keep it."""
     # FR-55.

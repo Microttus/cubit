@@ -12,6 +12,13 @@ from cubit.core.categories import (
     rank_categories,
     suggest_categories,
 )
+from cubit.core.check import (
+    ERROR,
+    WARNING,
+    CheckReport,
+    Problem,
+    check_data,
+)
 from cubit.core.durations import (
     format_duration,
     format_hours,
@@ -25,6 +32,18 @@ from cubit.core.errors import (
     DurationError,
     ProjectError,
     TimerError,
+)
+from cubit.core.export import (
+    FORMATS,
+    Document,
+    Table,
+    category_document,
+    client_document,
+    project_document,
+    render,
+    summary_document,
+    to_csv,
+    to_markdown,
 )
 from cubit.core.models import (
     Config,
@@ -160,4 +179,19 @@ __all__ = [
     "total_amount",
     "week_bounds",
     "week_label",
+    "ERROR",
+    "WARNING",
+    "CheckReport",
+    "Problem",
+    "check_data",
+    "FORMATS",
+    "Document",
+    "Table",
+    "category_document",
+    "client_document",
+    "project_document",
+    "render",
+    "summary_document",
+    "to_csv",
+    "to_markdown",
 ]

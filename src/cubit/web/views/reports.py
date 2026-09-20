@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, render_template, request
+from flask import Blueprint, Response, render_template, request, url_for
 
 from cubit.core import (
+    CubitError,
+    category_document,
     category_report,
+    client_document,
     client_report,
     find_entries,
+    project_document,
     project_report,
+    render,
     resolve_period,
     summarize,
+    summary_document,
 )
 from cubit.web import forms
 from cubit.web.views._shared import storage, today
@@ -155,3 +161,93 @@ def _category(store) -> dict:
         "end": end,
         "projects_by_id": store.load_projects_map(),
     }
+
+
+@bp.app_template_global()
+def export_url(fmt: str) -> str:
+    """The download link for the report currently on screen (FR-23)."""
+    args = dict(request.args)
+    args["format"] = fmt
+    args.setdefault("view", "week")
+    return url_for("reports.export", **args)
+
+
+#: What a downloaded report is called and served as.
+EXPORTS = {
+    "csv": ("csv", "text/csv"),
+    "markdown": ("md", "text/markdown"),
+}
+
+
+@bp.get("/export")
+def export():
+    """Download the report on screen as CSV or Markdown (FR-23).
+
+    The query string is the same one the page uses, so the link can simply
+    carry it over and the download always matches what is displayed.
+    """
+    fmt = forms.text(request.args, "format", "csv")
+    if fmt not in EXPORTS:
+        raise CubitError(
+            f"Cannot export as {fmt!r}.",
+            hint=f"Use one of {', '.join(EXPORTS)}.",
+        )
+
+    store = storage()
+    config = store.load_config()
+    kind = forms.text(request.args, "view", "week")
+    if kind not in VIEWS:
+        kind = "week"
+
+    document = _document(store, config, kind)
+    if document is None:
+        raise CubitError("There is nothing to export yet.", hint="Pick a report first.")
+
+    extension, media_type = EXPORTS[fmt]
+    name = f"cubit-{kind}-{_slug(document.title)}.{extension}"
+    return Response(
+        render(document, fmt),
+        mimetype=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+def _document(store, config, kind: str):
+    """The report the query string describes, as an exportable document."""
+    if kind in {"week", "month"}:
+        context = _summary(store, config, kind)
+        return summary_document(
+            context["summary"],
+            kind=kind,
+            label=context["period_label"],
+            currency=config.currency,
+            projects=store.load_projects_map(),
+            entries=True,
+        )
+
+    if kind == "project":
+        context = _project(store, config, store.load_projects())
+        if context["report"] is None:
+            return None
+        return project_document(
+            context["report"],
+            currency=config.currency,
+            projects=store.load_projects_map(),
+        )
+
+    if kind == "client":
+        context = _client(store)
+        if context["report"] is None:
+            return None
+        return client_document(context["report"], currency=config.currency)
+
+    context = _category(store)
+    if context["report"] is None:
+        return None
+    return category_document(context["report"], currency=config.currency)
+
+
+def _slug(title: str) -> str:
+    """A filename-safe version of the report's title."""
+    kept = [char.lower() if char.isalnum() else "-" for char in title]
+    return "".join(kept).strip("-").replace("--", "-") or "report"

@@ -75,6 +75,13 @@
         <a class="btn btn-quiet" href="{{ url_for('reports.index', view=kind) }}">Reset</a>
       </div>
     </form>
+
+    {# FR-23: the same query string, so a download matches what is on screen. #}
+    <p class="muted">
+      Download this report as
+      <a href="{{ export_url('csv') }}">CSV</a> or
+      <a href="{{ export_url('markdown') }}">Markdown</a>.
+    </p>
   </div>
 
   {% if kind in ('week', 'month') %}

@@ -15,7 +15,9 @@ import typer
 from typer.core import TyperGroup
 
 from cubit import __version__
+from cubit.cli import check as check_module
 from cubit.cli import entries, projects, reports
+from cubit.cli.completion import complete_shell, completion_script
 from cubit.cli.context import build_context, get_context
 from cubit.cli.exit_codes import EXIT_ERROR
 from cubit.cli.output import accent, echo, muted, paint
@@ -90,6 +92,20 @@ def init(ctx: typer.Context) -> None:
 
 
 @app.command()
+def completion(
+    shell: str = typer.Argument(
+        ...,
+        help="Which shell to write a script for: bash, zsh or fish.",
+        autocompletion=complete_shell,
+    ),
+) -> None:
+    """Print a shell tab-completion script for cubit."""
+    # FR-29. Pipe it into your shell config, for example:
+    #   cubit completion zsh >> ~/.zshrc
+    typer.echo(completion_script(shell.lower()))
+
+
+@app.command()
 def web(
     ctx: typer.Context,
     host: str = typer.Option("127.0.0.1", "--host", help="Interface to listen on."),
@@ -111,6 +127,7 @@ def web(
 
 
 entries.register(app)
+app.command("check")(check_module.check)
 app.add_typer(projects.app, name="project")
 app.add_typer(reports.app, name="report")
 
