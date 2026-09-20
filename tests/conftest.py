@@ -3,6 +3,7 @@ folder in ``tests/fixtures/`` into ``tmp_path`` (AGENT.md)."""
 
 from __future__ import annotations
 
+import re
 import shutil
 from pathlib import Path
 
@@ -65,3 +66,43 @@ def cli_empty(runner: CliRunner, tmp_path: Path):
 
     invoke.data_dir = data_dir  # type: ignore[attr-defined]
     return invoke
+
+
+@pytest.fixture
+def web_app(sample_dir: Path):
+    """A Flask app over a copy of the sample data folder."""
+    from cubit.web import create_app
+
+    app = create_app(sample_dir)
+    app.config.update(TESTING=True)
+    return app
+
+
+@pytest.fixture
+def web(web_app):
+    """A test client that carries the CSRF token for you.
+
+    ``web.post`` adds the session's token, so tests exercise the flows rather
+    than the plumbing; ``web.raw`` posts without one, for the CSRF tests.
+    """
+    client = web_app.test_client()
+
+    class Browser:
+        raw = client
+
+        def get(self, path: str, **kwargs):
+            return client.get(path, **kwargs)
+
+        def token(self, path: str = "/") -> str:
+            html = client.get(path).get_data(as_text=True)
+            found = re.search(r'name="csrf_token" value="([^"]+)"', html)
+            assert found, "no CSRF field on the page"
+            return found.group(1)
+
+        def post(self, path: str, data: dict | None = None, **kwargs):
+            payload = dict(data or {})
+            payload.setdefault("csrf_token", self.token())
+            kwargs.setdefault("follow_redirects", True)
+            return client.post(path, data=payload, **kwargs)
+
+    return Browser()
