@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Cubit theme: single source of truth for colors, fonts and shape.
+   Cubit's own palette, inspired by the IceCube Solutions site (icecubesol.no).
+   Dark is the default; the light "ice" variant uses the same tokens.
+   Do not hard-code colors anywhere else. Use these variables.
+   Copy to web/static/theme.css. Fonts: copy the .woff2 files from the
+   SpaceIceWeb repo's fonts/ folder into web/static/fonts/.
+   ========================================================================== */
+
+@font-face {
+  font-family: "JetBrains Sans";
+  src: url("fonts/JetBrainsSans-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+
+/* Theme switch: <html data-theme="dark | light | auto">, set from config.yaml.
+   light-dark(<light value>, <dark value>) picks the value for the active scheme. */
+:root { color-scheme: dark; }
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="auto"]  { color-scheme: light dark; }
+
+:root {
+  /* Surfaces */
+  --color-bg:             light-dark(#eaf6ff, #060b10);
+  --color-surface:        light-dark(#ffffff, #0d151d);
+  --color-surface-raised: light-dark(#f4faff, #142029);
+  --color-border:         light-dark(#cfe3f1, #1f2e3a);
+  --color-header-bg:      light-dark(rgba(255, 255, 255, 0.72), rgba(0, 0, 0, 0.45));
+  --color-glow:           light-dark(rgba(0, 119, 204, 0.10), rgba(0, 212, 255, 0.08));
+
+  /* Text */
+  --color-text:           light-dark(#0b2233, #e8f1f7);
+  --color-text-muted:     light-dark(#4a6478, #8fa5b5);
+
+  /* Accent (buttons, links, active nav, #category chips) */
+  --color-accent:          light-dark(#0077cc, #00d4ff);
+  --color-accent-hover:    light-dark(#005f88, #5fe3ff);
+  --color-accent-contrast: light-dark(#ffffff, #001a22);
+  --color-accent-soft:     light-dark(rgba(0, 119, 204, 0.10), rgba(0, 212, 255, 0.12));
+  --color-accent-line:     light-dark(rgba(0, 119, 204, 0.40), rgba(0, 212, 255, 0.45));
+
+  /* Status (budget bars, errors) */
+  --color-success:        light-dark(#16855a, #3ddc97);
+  --color-warning:        light-dark(#9a5b00, #ffb84d);
+  --color-danger:         light-dark(#c62f3a, #ff6b6b);
+
+  /* Type */
+  --font-body: "JetBrains Sans", Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Shape */
+  --radius-card: 12px;
+  --radius-pill: 999px;
+  --header-h: 64px;
+  --blur-header: 8px;
+  --shadow-card: light-dark(0 4px 15px rgba(0, 60, 90, 0.12), 0 4px 20px rgba(0, 0, 0, 0.5));
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}
+
+/* Minimal base. Components live in app.css and only use the variables above. */
+html, body { margin: 0; min-height: 100vh; }
+body {
+  font-family: var(--font-body);
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  background-image: radial-gradient(ellipse 80% 40% at 50% 0%, var(--color-glow), transparent);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}

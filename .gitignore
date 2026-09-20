@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+
+# Local scratch
+files.zip
