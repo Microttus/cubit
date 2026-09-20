@@ -1,0 +1,6 @@
+# Extra dependency for the macOS menu bar app (FR-75).
+# Install with the runtime requirements:
+#   pip install -r requirements.txt -r requirements-macos.txt
+# or, preferably, as the optional extra:
+#   pipx install "cubit[menubar]"
+rumps>=0.4; sys_platform == 'darwin'

@@ -20,6 +20,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.5"]
+# The macOS menu bar app (FR-75). rumps is macOS only, so the marker keeps it
+# from being installed anywhere it cannot work.
+menubar = ["rumps>=0.4; sys_platform == 'darwin'"]
 
 [project.scripts]
 cubit = "cubit.cli.main:app"
@@ -30,7 +33,12 @@ where = ["src"]
 [tool.setuptools.package-data]
 # The web app's templates, stylesheet, script, logo and fonts ship with it, so
 # nothing is fetched from the internet at runtime (FR-35, FR-58).
-cubit = ["web/templates/*.html", "web/static/*", "web/static/fonts/*"]
+cubit = [
+    "web/templates/*.html",
+    "web/static/*",
+    "web/static/fonts/*",
+    "menubar/assets/*.png",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

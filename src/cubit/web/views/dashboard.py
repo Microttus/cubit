@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
+from cubit import __version__
 from cubit.core import (
     cancel_timer,
     elapsed_minutes,
@@ -52,6 +53,18 @@ def index():
         todays_minutes=sum(entry.duration_minutes for entry in todays),
         week=week,
     )
+
+
+@bp.get("/healthz")
+def healthz():
+    """Say that this port is a cubit web app (FR-68).
+
+    The menu bar app probes this before opening the dashboard, so it does not
+    hand the browser to whatever else happens to be on port 8000. A plain GET,
+    so the CSRF guard does not apply, and it reveals nothing: the name and the
+    version, no data.
+    """
+    return {"app": "cubit", "version": __version__, "status": "ok"}
 
 
 @bp.post("/timer/start")

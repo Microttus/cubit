@@ -16,7 +16,7 @@ from typer.core import TyperGroup
 
 from cubit import __version__
 from cubit.cli import check as check_module
-from cubit.cli import entries, projects, reports
+from cubit.cli import entries, menubar, projects, reports
 from cubit.cli.completion import complete_shell, completion_script
 from cubit.cli.context import build_context, get_context
 from cubit.cli.exit_codes import EXIT_ERROR
@@ -128,6 +128,7 @@ def web(
 
 entries.register(app)
 app.command("check")(check_module.check)
+app.add_typer(menubar.app, name="menubar")
 app.add_typer(projects.app, name="project")
 app.add_typer(reports.app, name="report")
 
