@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: usable.** The CLI and the web app both work: `init`, the timer, manual entries, categories, project management, and the weekly, monthly, per-project, per-client and per-category summaries, from either interface. `cubit check` and the last polish are still to come; that is milestone 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
+> **Status: 0.1.0, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
 
 ## Features
 
@@ -15,6 +15,8 @@ Built for IceCube Solutions.
 - Web app with its own IceCube-inspired look: dark by default, light "ice" theme available
 - Reports: weekly, monthly, per project (hours vs. budget), per client, per category
 - Plain-text storage: CSV for time entries, YAML for projects. No database
+- Reports export as CSV or Markdown
+- `cubit check` validates the whole data folder in one pass
 - Local-first; the data folder is laid out so syncing can be added later
 
 ## Quick start
@@ -36,7 +38,9 @@ cubit project show acme-web
 cubit report week                  # this week, by project and by day
 cubit report month last            # last month, by project, client and week
 cubit report project acme-web      # hours vs. budget, earnings, categories
+cubit report month --format markdown -o september.md
 
+cubit check                        # validate the data folder
 cubit web                          # opens http://127.0.0.1:8000
 ```
 
@@ -54,7 +58,8 @@ cubit web                          # opens http://127.0.0.1:8000
 | `cubit edit <id>` / `cubit rm <id>` | Change or delete an entry |
 | `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
 | `cubit report week\|month\|project\|client\|category` | Summaries |
-| `cubit check` | Validate the data folder *(milestone 5)* |
+| `cubit check` | Validate the data folder |
+| `cubit completion <shell>` | Print a tab-completion script |
 | `cubit web` | Start the local web app |
 
 Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
@@ -64,12 +69,20 @@ Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
 `--from` / `--to` / `--project` / `--client` / `--category` narrow it down.
 Every command takes `--data-dir`, and `--yes` skips the prompts for scripts.
 
+Tab-completion covers commands, project ids, categories and clients. Install it
+with, for example, `cubit completion zsh >> ~/.zshrc` (bash, zsh, fish and
+PowerShell are supported).
+
 ### Reports
 
 `cubit report week` and `cubit report month` take `this` (the default), `last`,
 a date inside the period, or a name like `2026-W39` or `2026-09`. Every report
 accepts `--from` / `--to` for a custom range and `-c` to narrow to one category;
 `--by-category` breaks each project down as well.
+
+Any report can be written out with `--format csv` or `--format markdown`, to
+the terminal or to `--output FILE`; the web app offers the same two as
+downloads. An export shows exactly what the report shows, filters included.
 
 Weeks are ISO weeks (Monday to Sunday) unless `week_starts_on: sunday` says
 otherwise. A project's budget is measured against every hour ever logged against
@@ -111,6 +124,24 @@ file.
 
 > Werkzeug prints "This is a development server" on startup. That is expected:
 > cubit is a local single-user tool, so it does not ship a production server.
+
+## Checking the data
+
+`cubit check` reads the whole folder and reports everything wrong with it in one
+pass, rather than stopping at the first problem the way a normal load does:
+
+```
+$ cubit check
+warning  1 entry uses #invoicing on acme-web, but it is not registered on the project
+error    entries/2026-09.csv row 7: duration_minutes 'notanumber' is not a whole number
+error    entries/2026-10.csv: entry f00003 is dated 2026-09-15, which belongs in 2026-09.csv
+
+Checked 3 projects and 41 entries across 4 monthly files.
+2 errors, 1 warning.
+```
+
+Errors exit non-zero; warnings on their own do not, unless you pass `--strict`.
+It never writes anything.
 
 ## Data
 
@@ -164,6 +195,7 @@ You can edit these files by hand. Cubit validates them on load and tells you whi
 - Stack: Python 3.11+, Typer, Flask, Pydantic, ruamel.yaml, filelock, pytest, ruff
 - Architecture and contribution rules: [AGENT.md](AGENT.md)
 - Requirements, data model and milestones: [REQUIREMENTS.md](REQUIREMENTS.md)
+- What changed, and when: [CHANGELOG.md](CHANGELOG.md)
 - Logo, theme tokens and brand preview: [design/](design/)
 
 ```bash

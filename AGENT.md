@@ -6,11 +6,12 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** milestones 1 to 4 are built and tested: core, the CLI, the reports and the web app. Milestone 5 (`cubit check`, docs, shell completion) is what is left. Keep this file up to date as the repo takes shape, especially the Commands section.
+**Status:** all five milestones are built and tested; version 0.1.0 covers every *Must* and *Should* in `REQUIREMENTS.md`. Keep this file up to date as the repo changes, especially the Commands section.
 
 ## Source of truth
 
 - `REQUIREMENTS.md` defines what to build (FR-ids), the data formats and the milestones.
+- `CHANGELOG.md` records what changed in each version. Add an entry under **Unreleased** for anything a user would notice, and treat a change to a data format as breaking.
 - If code and requirements disagree, flag it. Don't silently pick one.
 - If you change behaviour or a file format, update `REQUIREMENTS.md` in the same change.
 
@@ -27,6 +28,8 @@ src/cubit/
 │   ├── storage.py     # the only file I/O: CSV, YAML, JSON, locking, atomic writes
 │   ├── service.py     # the operations behind the commands, shared by CLI and web
 │   ├── reports.py     # pure summaries over entries and projects (FR-17 to FR-22)
+│   ├── check.py       # validating a whole folder (FR-41)
+│   ├── export.py      # a report as CSV or Markdown (FR-23)
 │   ├── durations.py   # duration parsing and formatting (FR-27)
 │   ├── categories.py  # normalization, ranking, typo guard (FR-43 to FR-48, FR-52)
 │   ├── rates.py       # rate lookup by date and earnings (FR-14, FR-15)
@@ -37,6 +40,8 @@ src/cubit/
 │   ├── entries.py     # start, stop, status, cancel, add, list, edit, rm
 │   ├── projects.py    # project add|list|show|edit|rate|archive|unarchive|rm|category
 │   ├── reports.py     # report week|month|project|client|category
+│   ├── check.py       # the check command
+│   ├── completion.py  # tab-completion values and script (FR-29)
 │   ├── prompts.py     # category confirmation and suggestions (FR-45, FR-52, FR-53)
 │   ├── output.py      # aligned tables, totals, NO_COLOR (FR-28, FR-59)
 │   ├── parsing.py     # option strings -> dates, times, durations, money
@@ -71,11 +76,9 @@ cubit start acme-web -c software-coding -m "Landing page"
 cubit stop
 cubit list
 cubit report week
+cubit check
 cubit web
 ```
-
-`cubit check` does not exist yet; see the milestones in `REQUIREMENTS.md`
-section 9.
 
 ## Architecture rules
 
@@ -117,6 +120,7 @@ section 9.
 
 - Every requirement with logic gets tests. Reference the FR-id in the test name or docstring where practical.
 - Must cover: rate lookup by date, budget calculation, ISO week and month/year boundaries, timers crossing midnight and DST, hand-edited CSV parsing, safe concurrent writes, category normalization, suggestion ranking and auto-registration of new categories, and CSRF on every state-changing route.
+- `cubit check` must never write anything, and must keep going past a problem: reporting everything in one pass is the point of it.
 - Run `pytest` and `ruff check .` before saying a task is done.
 
 ## Working style
@@ -124,4 +128,4 @@ section 9.
 - Small, focused changes. Work one milestone at a time (see `REQUIREMENTS.md` section 9).
 - If a requirement is ambiguous, ask. Otherwise state your assumptions in the summary.
 - Don't build anything from the "Out of scope" list.
-- Definition of done: tests pass, ruff is clean, docs updated (README, REQUIREMENTS, AGENT), and a manual smoke test of the CLI and web app for user-facing changes.
+- Definition of done: tests pass, ruff is clean, docs updated (README, REQUIREMENTS, AGENT, CHANGELOG), and a manual smoke test of the CLI and web app for user-facing changes.
