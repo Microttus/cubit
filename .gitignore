@@ -223,7 +223,7 @@ __marimo__/
 # IDEs
 .idea/
 .vscode/
-.mpc.json/
+.mcp.json
 
 # Local scratch
-files.zip
+files*.zip
