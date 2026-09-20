@@ -7,7 +7,10 @@ import shutil
 from pathlib import Path
 
 import pytest
+from click.testing import Result
+from typer.testing import CliRunner
 
+from cubit.cli.main import app
 from cubit.core import Storage
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -34,3 +37,31 @@ def empty_storage(tmp_path: Path) -> Storage:
     store = Storage(tmp_path / "empty-data")
     store.init()
     return store
+
+
+@pytest.fixture
+def runner() -> CliRunner:
+    """A Typer runner with colour off, so assertions see plain text."""
+    return CliRunner(env={"NO_COLOR": "1"})
+
+
+@pytest.fixture
+def cli(runner: CliRunner, sample_dir: Path):
+    """Run cubit against the sample data folder and return the result."""
+
+    def invoke(*args: str, input: str | None = None) -> Result:
+        return runner.invoke(app, ["--data-dir", str(sample_dir), *args], input=input)
+
+    return invoke
+
+
+@pytest.fixture
+def cli_empty(runner: CliRunner, tmp_path: Path):
+    """Run cubit against a folder that has not been initialised yet."""
+    data_dir = tmp_path / "fresh"
+
+    def invoke(*args: str, input: str | None = None) -> Result:
+        return runner.invoke(app, ["--data-dir", str(data_dir), *args], input=input)
+
+    invoke.data_dir = data_dir  # type: ignore[attr-defined]
+    return invoke
