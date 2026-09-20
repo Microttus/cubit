@@ -587,21 +587,22 @@ def _merge_projects(existing: CommentedSeq, wanted: list[Project]) -> CommentedS
 def _project_node(project: Project, node: Any) -> CommentedMap:
     """Fill a project's keys into its existing YAML node, or build a fresh one."""
     target = node if isinstance(node, CommentedMap) else CommentedMap()
+    # Key order follows the example in REQUIREMENTS 4.2 for files we write from
+    # scratch; an existing node keeps whatever order it was hand-written in.
     values: dict[str, Any] = {
         "id": project.id,
         "name": project.name,
         "client": project.client,
         "status": project.status.value,
         "categories": list(project.categories),
-        "rates": [
-            CommentedMap({"valid_from": rate.valid_from, "rate": rate.rate})
-            for rate in project.rates
-        ],
     }
     if project.budget_hours is not None:
         values["budget_hours"] = project.budget_hours
     elif "budget_hours" in target:
         del target["budget_hours"]
+    values["rates"] = [
+        CommentedMap({"valid_from": rate.valid_from, "rate": rate.rate}) for rate in project.rates
+    ]
 
     for key, value in values.items():
         target[key] = value

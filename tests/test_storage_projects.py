@@ -179,3 +179,23 @@ def test_invalid_projects_are_never_overwritten(storage: Storage) -> None:
 def test_an_empty_projects_file_is_no_projects(storage: Storage) -> None:
     storage.projects_path.write_text("", encoding="utf-8")
     assert storage.load_projects() == []
+
+
+def test_a_new_project_is_written_in_the_documented_key_order(empty_storage: Storage) -> None:
+    """REQUIREMENTS 4.2 shows id, name, client, status, categories, budget_hours, rates."""
+    empty_storage.add_project(
+        Project(
+            id="beta-app",
+            name="Beta app",
+            client="Beta AS",
+            categories=["admin"],
+            budget_hours=Decimal("40"),
+            rates=[Rate(valid_from=date(2026, 9, 1), rate=Decimal("110"))],
+        )
+    )
+    keys = [
+        line.split(":")[0].strip("- ")
+        for line in empty_storage.projects_path.read_text(encoding="utf-8").splitlines()
+        if line.startswith(("  - ", "    ")) and ":" in line and not line.startswith("      ")
+    ]
+    assert keys == ["id", "name", "client", "status", "categories", "budget_hours", "rates"]
