@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: usable from the command line.** Logging time works today: `init`, the timer, manual entries, categories and project management. Reports (`cubit report`), the data-folder check (`cubit check`) and the web app (`cubit web`) are not built yet; they are milestones 3 to 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
+> **Status: usable from the command line.** Logging time and reporting on it both work today: `init`, the timer, manual entries, categories, project management and the weekly, monthly, per-project, per-client and per-category summaries. The data-folder check (`cubit check`) and the web app (`cubit web`) are not built yet; they are milestones 4 and 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
 
 ## Features
 
@@ -13,7 +13,7 @@ Built for IceCube Solutions.
 - Projects with client, hourly-rate history, status (active/archived) and an hour budget
 - Categories per project (e.g. `#software-coding`), remembered and suggested as you log, and totalled across projects
 - Web app with its own IceCube-inspired look: dark by default, light "ice" theme available *(planned)*
-- Reports: weekly, monthly, per project (hours vs. budget), per client *(planned)*
+- Reports: weekly, monthly, per project (hours vs. budget), per client, per category
 - Plain-text storage: CSV for time entries, YAML for projects. No database
 - Local-first; the data folder is laid out so syncing can be added later
 
@@ -33,7 +33,10 @@ cubit add acme-web 1h30m -c project-management --date 2026-09-18 -m "Client call
 cubit list
 cubit project show acme-web
 
-cubit report week                  # planned, milestone 3
+cubit report week                  # this week, by project and by day
+cubit report month last            # last month, by project, client and week
+cubit report project acme-web      # hours vs. budget, earnings, categories
+
 cubit web                          # planned, milestone 4
 ```
 
@@ -50,7 +53,7 @@ cubit web                          # planned, milestone 4
 | `cubit list [filters]` | List entries |
 | `cubit edit <id>` / `cubit rm <id>` | Change or delete an entry |
 | `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
-| `cubit report week\|month\|project\|client\|category` | Summaries *(milestone 3)* |
+| `cubit report week\|month\|project\|client\|category` | Summaries |
 | `cubit check` | Validate the data folder *(milestone 5)* |
 | `cubit web` | Start the local web app *(milestone 4)* |
 
@@ -60,6 +63,19 @@ Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
 `cubit list` shows the current month by default; `--all` shows everything, and
 `--from` / `--to` / `--project` / `--client` / `--category` narrow it down.
 Every command takes `--data-dir`, and `--yes` skips the prompts for scripts.
+
+### Reports
+
+`cubit report week` and `cubit report month` take `this` (the default), `last`,
+a date inside the period, or a name like `2026-W39` or `2026-09`. Every report
+accepts `--from` / `--to` for a custom range and `-c` to narrow to one category;
+`--by-category` breaks each project down as well.
+
+Weeks are ISO weeks (Monday to Sunday) unless `week_starts_on: sunday` says
+otherwise. A project's budget is measured against every hour ever logged against
+it, not just the hours in the report, and warns at `budget_warning_percent`
+(default 80%) and again once it is exceeded. Time that no rate covers is counted
+in its own column as *unrated* rather than as zero earnings.
 
 ### Categories
 

@@ -6,7 +6,7 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** milestones 1 (core) and 2 (CLI basics) are built and tested. Logging time from the command line works; reports, `cubit check` and the web app are not built yet. Keep this file up to date as the repo takes shape, especially the Commands section.
+**Status:** milestones 1 (core), 2 (CLI basics) and 3 (reports) are built and tested. `cubit check` and the web app are not built yet. Keep this file up to date as the repo takes shape, especially the Commands section.
 
 ## Source of truth
 
@@ -22,10 +22,11 @@ Python 3.11+ · Typer (CLI) · Flask + Jinja2 (web) · Pydantic v2 (validation) 
 
 ```
 src/cubit/
-├── core/          # models, storage, timer, rates, durations, categories (reports in M3)
+├── core/          # models, storage, timer, rates, durations, categories, reports
 │   ├── models.py      # Pydantic models for every stored shape
 │   ├── storage.py     # the only file I/O: CSV, YAML, JSON, locking, atomic writes
 │   ├── service.py     # the operations behind the commands, shared by CLI and web
+│   ├── reports.py     # pure summaries over entries and projects (FR-17 to FR-22)
 │   ├── durations.py   # duration parsing and formatting (FR-27)
 │   ├── categories.py  # normalization, ranking, typo guard (FR-43 to FR-48, FR-52)
 │   ├── rates.py       # rate lookup by date and earnings (FR-14, FR-15)
@@ -35,6 +36,7 @@ src/cubit/
 │   ├── main.py        # app, global options, CubitError -> message + hint + exit 1
 │   ├── entries.py     # start, stop, status, cancel, add, list, edit, rm
 │   ├── projects.py    # project add|list|show|edit|rate|archive|unarchive|rm|category
+│   ├── reports.py     # report week|month|project|client|category
 │   ├── prompts.py     # category confirmation and suggestions (FR-45, FR-52, FR-53)
 │   ├── output.py      # aligned tables, totals, NO_COLOR (FR-28, FR-59)
 │   ├── parsing.py     # option strings -> dates, times, durations, money
@@ -61,10 +63,11 @@ cubit project add acme-web --name "Acme website" --client "Acme Corp" --rate 95
 cubit start acme-web -c software-coding -m "Landing page"
 cubit stop
 cubit list
+cubit report week
 ```
 
-`cubit report`, `cubit check` and `cubit web` do not exist yet; see the
-milestones in `REQUIREMENTS.md` section 9.
+`cubit check` and `cubit web` do not exist yet; see the milestones in
+`REQUIREMENTS.md` section 9.
 
 ## Architecture rules
 
@@ -90,6 +93,7 @@ milestones in `REQUIREMENTS.md` section 9.
 
 - Type hints everywhere. Format and lint with ruff (line length 100).
 - Money is `Decimal`, never `float`. Durations are integer minutes.
+- Time no rate covers is carried as unrated minutes beside the money, never as zero earnings (FR-15).
 - Dates are `datetime.date` in local time. The timer's elapsed time is computed from timezone-aware timestamps.
 - CLI errors: short message plus hint, non-zero exit code, no traceback.
 - Web: server-rendered, no JS build step, no CDN or external requests, bind to `127.0.0.1` only, CSRF protection on POST.
