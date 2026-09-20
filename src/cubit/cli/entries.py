@@ -222,8 +222,9 @@ def list_entries(
     projects = storage.load_projects_map()
     echo(table(ENTRY_COLUMNS, entry_rows(entries, projects)))
     total = sum(entry.duration_minutes for entry in entries)
+    counted = "1 entry" if len(entries) == 1 else f"{len(entries)} entries"
     echo()
-    echo(f"{len(entries)} entries, {accent(format_total(total))}")
+    echo(f"{counted}, {accent(format_total(total))}")
     if start or end:
         echo(
             muted(

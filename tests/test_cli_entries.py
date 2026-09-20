@@ -256,3 +256,9 @@ def test_rm_with_yes_does_not_ask(cli, storage: Storage) -> None:
     assert result.exit_code == EXIT_OK
     assert "Delete this entry?" not in result.stdout
     assert storage.find_entry("c48d7e") is None
+
+
+def test_the_entry_count_is_singular_for_one(cli) -> None:
+    """FR-28: totals read like a sentence, not a template."""
+    assert "1 entry, " in cli("list", "--all", "--limit", "1").stdout
+    assert "6 entries, " in cli("list", "--all").stdout
