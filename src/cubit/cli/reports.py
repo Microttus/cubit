@@ -202,9 +202,11 @@ def project(
     end = parse_day(until)
     target = storage.get_project(project_id)
 
+    # The whole history, not just the period: FR-19 wants the project's total
+    # hours beside the period's, and the budget covers every hour ever logged.
     report = project_report(
         target,
-        find_entries(storage, start=start, end=end, category=category),
+        find_entries(storage, category=category),
         storage.load_projects_map(),
         start=start,
         end=end,
@@ -253,7 +255,7 @@ def client(
 
     report = client_report(
         name,
-        find_entries(storage, start=start, end=end, category=category),
+        find_entries(storage, category=category),
         storage.load_projects_map(),
         start=start,
         end=end,
@@ -289,7 +291,7 @@ def category(
 
     report = category_report(
         name,
-        find_entries(storage, start=start, end=end),
+        find_entries(storage),
         storage.load_projects_map(),
         start=start,
         end=end,
