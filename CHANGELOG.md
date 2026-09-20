@@ -51,7 +51,8 @@ both over the same plain-text files.
   while it has no entries.
 - The rate for an entry is the latest rate starting on or before its date, and
   time no rate covers is reported as unrated rather than as zero earnings
-  (FR-14, FR-15).
+  (FR-14, FR-15). `--rate` without `--rate-from` starts today, and both the
+  project and the report say so, so backfilled time is never quietly unpaid.
 
 **Categories**
 

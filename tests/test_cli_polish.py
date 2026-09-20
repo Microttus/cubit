@@ -260,3 +260,52 @@ def test_the_script_speaks_the_protocol_cubit_answers(sample_dir: Path) -> None:
 def test_the_completion_command_needs_no_data_folder(cli_empty) -> None:
     """You install completion before you have anything to complete."""
     assert cli_empty("completion", "zsh").exit_code == EXIT_OK
+
+
+# ------------------------------------------------ explaining unrated time
+
+
+def test_creating_a_project_says_when_its_rate_starts(cli) -> None:
+    """--rate without --rate-from starts today, which is easy to miss (FR-14)."""
+    result = cli("project", "add", "beta-app", "--name", "Beta app", "--rate", "95")
+
+    assert result.exit_code == EXIT_OK
+    assert "95 an hour from" in result.stdout
+    assert "time logged before that is unrated" in result.stdout
+
+
+def test_creating_a_project_without_a_rate_says_nothing_about_rates(cli) -> None:
+    result = cli("project", "add", "beta-app", "--name", "Beta app")
+    assert "an hour from" not in result.stdout
+
+
+def test_a_report_explains_time_that_predates_the_first_rate(cli, storage) -> None:
+    """FR-15: 'unrated' is more useful when it says why."""
+    cli(
+        "project",
+        "add",
+        "beta-app",
+        "--name",
+        "Beta app",
+        "--rate",
+        "95",
+        "--rate-from",
+        "2027-01-01",
+    )
+    cli("add", "beta-app", "2h", "--date", "2026-09-21", "--yes")
+
+    output = cli("report", "project", "beta-app").stdout
+    assert "earned    unrated" in output
+    assert "the first one starts 2027-01-01" in output
+
+
+def test_a_project_with_no_rates_at_all_gets_no_explanation(cli) -> None:
+    """There is nothing to explain: the project is simply unpaid."""
+    output = cli("report", "project", "internal").stdout
+    assert "unrated" in output
+    assert "the first one starts" not in output
+
+
+def test_a_rated_report_gets_no_explanation(cli) -> None:
+    output = cli("report", "project", "acme-web").stdout
+    assert "the first one starts" not in output

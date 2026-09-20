@@ -126,6 +126,20 @@ def _section(title: str, lines, currency: str, *, skip_empty: bool = True) -> No
         echo()
 
 
+def _all_unrated_before_the_first_rate(report) -> bool:
+    """True when every minute shown predates the project's first rate (FR-15).
+
+    Unrated time has two very different causes -- no rate at all, or a rate that
+    had not started yet -- and only the second one is worth explaining.
+    """
+    return bool(
+        report.period.minutes
+        and not report.period.has_earnings
+        and report.project.rates
+        and all(entry.date < report.project.rates[0].valid_from for entry in report.entries)
+    )
+
+
 def _project_categories(summary: Summary, storage: Storage, currency: str) -> None:
     """Each project broken down by category (FR-54)."""
     projects = storage.load_projects_map()
@@ -303,6 +317,9 @@ def project(
             f"{start.isoformat() if start else '...'} to {end.isoformat() if end else '...'}"
         )
     echo(f"  earned    {format_earnings(report.period, config.currency)}")
+    if _all_unrated_before_the_first_rate(report):
+        first = report.project.rates[0].valid_from
+        echo(muted(f"            no rate applied yet: the first one starts {first}"))
     if report.budget is not None:
         echo(f"  budget    {budget_line(report.budget)}")
     else:

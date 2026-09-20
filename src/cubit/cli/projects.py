@@ -77,6 +77,16 @@ def add(
         rate_from=parse_day(rate_from),
     )
     echo(f"Created {accent(project.id)} ({project.name}).")
+    if project.rates:
+        # --rate without --rate-from starts today, so time logged earlier is
+        # unrated (FR-14). Say so here rather than let a report puzzle them.
+        first = project.rates[0]
+        echo(
+            muted(
+                f"  {first.rate} an hour from {format_date(first.valid_from)}; "
+                "time logged before that is unrated."
+            )
+        )
 
 
 @app.command("list")
