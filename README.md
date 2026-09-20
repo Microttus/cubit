@@ -9,7 +9,7 @@ Built for IceCube Solutions.
 ## Features
 
 - Start/stop timer **or** add time manually after the fact
-- CLI (`cubit`) and local web app (`cubit web`) on one shared core
+- CLI (`cubit`) and local web app (`cubit web`) on one shared core, plus an optional macOS menu bar app
 - Projects with client, hourly-rate history, status (active/archived) and an hour budget
 - Categories per project (e.g. `#software-coding`), remembered and suggested as you log, and totalled across projects
 - Web app with its own IceCube-inspired look: dark by default, light "ice" theme available
@@ -17,6 +17,7 @@ Built for IceCube Solutions.
 - Plain-text storage: CSV for time entries, YAML for projects. No database
 - Reports export as CSV or Markdown
 - `cubit check` validates the whole data folder in one pass
+- Optional macOS menu bar app: start and stop the timer without leaving what you are doing
 - Local-first; the data folder is laid out so syncing can be added later
 
 ## Quick start
@@ -61,6 +62,7 @@ cubit web                          # opens http://127.0.0.1:8000
 | `cubit check` | Validate the data folder |
 | `cubit completion <shell>` | Print a tab-completion script |
 | `cubit web` | Start the local web app |
+| `cubit menubar` | Start the macOS menu bar app *(macOS only)* |
 
 Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
 `today` and `yesterday`.
@@ -125,6 +127,47 @@ file.
 > Werkzeug prints "This is a development server" on startup. That is expected:
 > cubit is a local single-user tool, so it does not ship a production server.
 
+## macOS menu bar app
+
+On macOS, cubit can sit in the menu bar: an icon at the top right that starts
+and stops the timer without you leaving what you are doing. It is a third front
+end on the same files, so a timer started here shows up in `cubit status` and in
+the web app, and the other way round.
+
+![The menu bar icons, light and dark](design/menubar/menubar-preview.png)
+
+```bash
+pipx install "cubit[menubar]"      # rumps is an extra, macOS only
+cubit menubar
+```
+
+Developing on it: `pip install -e ".[menubar]"`.
+
+The icon is outlined while idle and solid while a timer runs, with the elapsed
+time beside it. Set `menubar_title` in `config.yaml` to `none`, `time` (the
+default) or `project-time` to choose what that text says.
+
+The menu offers **Start timer** as a submenu of your active projects, most
+recently used first, each with its own categories in the same order the CLI
+suggests them, plus *No category* and *New category…*. While a timer runs it
+shows the project, the category and how long it has been going, with **Stop
+timer…** (which asks for a note) and **Cancel timer**. **Open dashboard** opens
+the web app, starting one first if nothing is answering on its port.
+
+**Quit Cubit** closes the menu bar app only — a running timer keeps running,
+because it lives in `.state/timer.json`, not in the app.
+
+### Start it at login
+
+```bash
+cubit menubar install-login        # writes ~/Library/LaunchAgents/no.icecubesol.cubit.plist
+launchctl load -w ~/Library/LaunchAgents/no.icecubesol.cubit.plist
+```
+
+`cubit menubar uninstall-login` removes it again. Cubit writes the file and
+tells you the `launchctl` command rather than running it, because loading an
+agent changes your login session and that should be your decision.
+
 ## Checking the data
 
 `cubit check` reads the whole folder and reports everything wrong with it in one
@@ -149,7 +192,7 @@ Everything lives in one folder (default `~/cubit-data`, override with `--data-di
 
 ```
 cubit-data/
-├── config.yaml          # currency, week start, budget warning level, theme
+├── config.yaml          # currency, week start, budget warning level, theme, menu bar title
 ├── projects.yaml        # clients/projects, rates, status, categories, budgets
 ├── entries/
 │   ├── 2026-08.csv      # one file per month
@@ -193,6 +236,7 @@ You can edit these files by hand. Cubit validates them on load and tells you whi
 ## Development
 
 - Stack: Python 3.11+, Typer, Flask, Pydantic, ruamel.yaml, filelock, pytest, ruff
+  (plus rumps on macOS, for the optional menu bar app)
 - Architecture and contribution rules: [AGENT.md](AGENT.md)
 - Requirements, data model and milestones: [REQUIREMENTS.md](REQUIREMENTS.md)
 - What changed, and when: [CHANGELOG.md](CHANGELOG.md)
@@ -203,14 +247,16 @@ python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 pip install -e .
+pip install -e ".[menubar]"        # macOS only, for the menu bar app
 
 pytest
 ruff check . && ruff format .
 ```
 
-The code is laid out `src/cubit/{core,cli,web}`. All business logic lives in
-`cubit.core`, which never imports Typer or Flask, and every read and write of a
-data file goes through `cubit.core.storage`.
+The code is laid out `src/cubit/{core,cli,web,menubar}`. All business logic
+lives in `cubit.core`, which never imports Typer, Flask or rumps, and every read
+and write of a data file goes through `cubit.core.storage`. The menu bar app's
+contents are decided by a pure module that runs, and is tested, on any OS.
 
 ## License
 

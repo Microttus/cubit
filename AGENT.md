@@ -6,7 +6,7 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** all five milestones are built and tested; version 0.1.0 covers every *Must* and *Should* in `REQUIREMENTS.md`. Keep this file up to date as the repo changes, especially the Commands section.
+**Status:** all six milestones are built and tested, the macOS menu bar app included. Keep this file up to date as the repo changes, especially the Commands section.
 
 ## Source of truth
 
@@ -17,7 +17,7 @@ Cubit is a time-logging tool for a one-person company (IceCube Solutions). It ha
 
 ## Stack
 
-Python 3.11+ · Typer (CLI) · Flask + Jinja2 (web) · Pydantic v2 (validation) · ruamel.yaml · filelock · pytest · ruff
+Python 3.11+ · Typer (CLI) · Flask + Jinja2 (web) · rumps (macOS menu bar, optional extra) · Pydantic v2 (validation) · ruamel.yaml · filelock · pytest · ruff
 
 ## Layout
 
@@ -47,18 +47,24 @@ src/cubit/
 │   ├── parsing.py     # option strings -> dates, times, durations, money
 │   ├── context.py     # data-folder resolution (FR-26)
 │   └── exit_codes.py
-└── web/           # Flask app
-    ├── app.py         # the factory: config, CSRF hook, error handler
-    ├── security.py    # CSRF tokens (FR-36)
-    ├── forms.py       # request values -> the types core expects
-    ├── filters.py     # Jinja filters, so templates hold no formatting logic
-    ├── views/         # one blueprint per page
-    ├── templates/
-    └── static/        # theme.css, app.css, app.js, the logo, fonts/
+├── web/           # Flask app
+│   ├── app.py         # the factory: config, CSRF hook, error handler
+│   ├── security.py    # CSRF tokens (FR-36)
+│   ├── forms.py       # request values -> the types core expects
+│   ├── filters.py     # Jinja filters, so templates hold no formatting logic
+│   ├── views/         # one blueprint per page
+│   ├── templates/
+│   └── static/        # theme.css, app.css, app.js, the logo, fonts/
+└── menubar/       # macOS menu bar app (rumps), optional
+    ├── model.py       # pure: what the menu says, testable on any OS (FR-71)
+    ├── app.py         # the only module that imports rumps
+    ├── server.py      # find or start the web app for Open dashboard (FR-68)
+    ├── login.py       # the LaunchAgent plist (FR-74)
+    └── assets/        # the two template icons
 tests/
 └── fixtures/
     └── sample-data/   # a small realistic data folder used by the tests
-design/    # starter theme.css, logo and brand preview (used from Milestone 4)
+design/    # starter theme.css, logo and brand preview (M4); menubar/ icons (M6)
 ```
 
 ## Commands
@@ -78,12 +84,13 @@ cubit list
 cubit report week
 cubit check
 cubit web
+cubit menubar                                       # macOS only
 ```
 
 ## Architecture rules
 
 1. Business logic lives only in `cubit.core`. CLI and web are thin: parse input, call core, format output. An operation that takes more than one storage call belongs in `core.service`, not in a command.
-2. `core` must not import Typer or Flask.
+2. `core` must not import Typer, Flask or rumps, and stays cross-platform.
 3. All reads and writes of data files go through `core.storage`. No direct `open()` on data files elsewhere.
 4. Writes are atomic (temp file + `os.replace`) and held under a file lock, because CLI and web may run at the same time.
 5. Reports are pure functions over entries and projects.
@@ -114,12 +121,16 @@ cubit web
 - CLI: the category option is `--category` / `-c` and is documented without `#`, since an unquoted `#` starts a shell comment.
 - CLI: a command's docstring is its `--help` text, so FR-ids go in a comment beneath it, not in the docstring.
 - CLI: every command that can ask something takes `--yes` / `-y`, and nothing is ever asked when stdin is not a terminal.
+- macOS: only `menubar/app.py` may import rumps, and it is imported lazily, so every other command works without the extra. Everything the menu shows is decided in `menubar/model.py`, which is pure and tested without macOS (FR-71).
+- macOS: every menu callback is wrapped, because an exception in one kills the app with no window to report it in. Errors become a notification and a log line (FR-73).
+- macOS: a menu bar click must never wait on the folder lock. Reads do not take it; writes use a short `lock_timeout`.
 - Keep dependencies minimal. Ask before adding one.
 
 ## Testing
 
 - Every requirement with logic gets tests. Reference the FR-id in the test name or docstring where practical.
-- Must cover: rate lookup by date, budget calculation, ISO week and month/year boundaries, timers crossing midnight and DST, hand-edited CSV parsing, safe concurrent writes, category normalization, suggestion ranking and auto-registration of new categories, and CSRF on every state-changing route.
+- Must cover: rate lookup by date, budget calculation, ISO week and month/year boundaries, timers crossing midnight and DST, hand-edited CSV parsing, safe concurrent writes, category normalization, suggestion ranking and auto-registration of new categories, CSRF on every state-changing route, and the menu bar model on a machine that is not a Mac.
+- Tests never import rumps. If something can only be tested with a menu bar, it belongs in `menubar/model.py` instead.
 - `cubit check` must never write anything, and must keep going past a problem: reporting everything in one pass is the point of it.
 - Run `pytest` and `ruff check .` before saying a task is done.
 

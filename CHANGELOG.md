@@ -10,7 +10,32 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **macOS menu bar app** (`cubit menubar`), an optional third front end on the
+  same files: start and stop the timer from the menu bar, see today's and this
+  week's totals, and open the dashboard (FR-63 to FR-75). A timer started here
+  shows up in the CLI and the web app, and the other way round.
+  - The icon is outlined while idle and solid while running, as monochrome
+    template images macOS recolours for a light or dark menu bar (FR-72).
+  - `menubar_title` in `config.yaml` sets the text beside the icon: `none`,
+    `time` (the default) or `project-time` (FR-64).
+  - `cubit menubar install-login` writes a LaunchAgent so it starts at login;
+    `uninstall-login` removes it (FR-74).
+  - Installed as an extra, macOS only: `pipx install "cubit[menubar]"` (FR-75).
+- `/healthz` on the web app, so the menu bar app can tell a cubit server from
+  whatever else might be on port 8000 before opening the browser (FR-68).
+
+### Changed
+
+- `config.yaml` accepts `menubar_title`. REQUIREMENTS 4.3 already documented
+  the key, but the config model rejected unknown keys, so a config file written
+  to the documented shape did not load. Existing files are unaffected: the key
+  is optional and defaults to `time`.
+- A write that waits too long for the data-folder lock now raises a normal
+  cubit error with a message and a hint, instead of a `filelock` exception. The
+  timeout is settable per `Storage`, which is what keeps the menu bar app from
+  freezing on a folder another process is writing to.
 
 ## [0.1.0] - 2026-09-20
 
