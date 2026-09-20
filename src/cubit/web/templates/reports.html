@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% from "_macros.html" import breakdown, budget_meter, entry_rows %}
+
+{% block content %}
+  <h1>Reports</h1>
+
+  <nav class="tabs">
+    {% for name in views %}
+      <a href="{{ url_for('reports.index', view=name) }}"
+         {% if kind == name %}class="is-active"{% endif %}>{{ name | capitalize }}</a>
+    {% endfor %}
+  </nav>
+
+  <div class="card">
+    <form class="row" method="get" action="{{ url_for('reports.index') }}">
+      <input type="hidden" name="view" value="{{ kind }}">
+
+      {% if kind in ('week', 'month') %}
+        <div class="field field-narrow">
+          <label for="when">Period</label>
+          <select id="when" name="when">
+            <option value="this" {% if when == 'this' %}selected{% endif %}>This {{ kind }}</option>
+            <option value="last" {% if when == 'last' %}selected{% endif %}>Last {{ kind }}</option>
+          </select>
+        </div>
+      {% elif kind == 'project' %}
+        <div class="field">
+          <label for="project">Project</label>
+          <select id="project" name="project">
+            {% for project in projects %}
+              <option value="{{ project.id }}" {% if chosen == project.id %}selected{% endif %}>
+                {{ project.name }}{% if not project.is_active %} (archived){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+      {% elif kind == 'client' %}
+        <div class="field">
+          <label for="client">Client</label>
+          <select id="client" name="client">
+            {% for name in clients %}
+              <option value="{{ name }}" {% if chosen == name %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% else %}
+        <div class="field">
+          <label for="category">Category</label>
+          <input id="category" name="category" value="{{ chosen or '' }}"
+                 list="every-category" placeholder="software-coding">
+          <datalist id="every-category">
+            {% for name in categories %}<option value="{{ name }}">{% endfor %}
+          </datalist>
+        </div>
+      {% endif %}
+
+      <div class="field field-narrow">
+        <label for="from">From</label>
+        <input id="from" type="date" name="from" value="{{ start | day }}">
+      </div>
+      <div class="field field-narrow">
+        <label for="to">To</label>
+        <input id="to" type="date" name="to" value="{{ end | day }}">
+      </div>
+
+      {% if kind != 'category' %}
+        <div class="field field-narrow">
+          <label for="filter-category">Only category</label>
+          <input id="filter-category" name="category" value="{{ category or '' }}" placeholder="any">
+        </div>
+      {% endif %}
+
+      <div class="row-end">
+        <button class="btn btn-primary" type="submit">Show</button>
+        <a class="btn btn-quiet" href="{{ url_for('reports.index', view=kind) }}">Reset</a>
+      </div>
+    </form>
+  </div>
+
+  {% if kind in ('week', 'month') %}
+    <div class="card">
+      <h2>{{ period_label }} <span class="muted mono">{{ start | day }} to {{ end | day }}</span></h2>
+      <p class="big">{{ summary.total.minutes | duration }}</p>
+      <p class="mono">{{ summary.total.minutes | hours }} hours ·
+        {{ summary.total | earned(currency) }}</p>
+      {% if category %}<p class="muted">filtered to #{{ category }}</p>{% endif %}
+    </div>
+
+    {% if summary.by_project %}
+      <div class="card">
+        <h2>By project</h2>
+        {{ breakdown(summary.by_project, 'Project', currency) }}
+      </div>
+
+      {% if kind == 'month' %}
+        <div class="card">
+          <h2>By client</h2>
+          {{ breakdown(summary.by_client, 'Client', currency) }}
+        </div>
+      {% endif %}
+
+      <div class="card">
+        <h2>By {{ 'day' if kind == 'week' else 'week' }}</h2>
+        {{ breakdown(summary.by_day if kind == 'week' else summary.by_week,
+                     'Day' if kind == 'week' else 'Week', currency) }}
+      </div>
+
+      <div class="card">
+        <h2>By category</h2>
+        {{ breakdown(summary.by_category, 'Category', currency) }}
+      </div>
+
+      <div class="card">
+        <h2>Each project by category</h2>
+        {% for line in summary.by_project %}
+          {% set lines = summary.by_project_category.get(line.key, []) %}
+          {% if lines %}
+            <h3>{{ line.label }}</h3>
+            {{ breakdown(lines, 'Category', currency) }}
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="card"><p class="table-empty">Nothing logged in this period.</p></div>
+    {% endif %}
+
+  {% elif kind == 'project' %}
+    {% if report %}
+      <div class="card">
+        <h2>{{ report.project.name }}
+          <span class="muted mono">{{ report.project.id }}</span></h2>
+        <p class="big">{{ report.total.minutes | duration }}</p>
+        <p class="mono">{{ report.total.minutes | hours }} hours in total</p>
+        {% if start or end %}
+          <p class="mono">{{ report.period.minutes | duration }}
+            ({{ report.period.minutes | hours }} h) in the selected period</p>
+        {% endif %}
+        <p class="mono">{{ report.period | earned(currency) }}</p>
+        {% if report.budget %}{{ budget_meter(report.budget) }}{% endif %}
+      </div>
+      {% if report.by_category %}
+        <div class="card">
+          <h2>By category</h2>
+          {{ breakdown(report.by_category, 'Category', currency) }}
+        </div>
+      {% endif %}
+      <div class="card">
+        <h2>Entries</h2>
+        {{ entry_rows(report.entries | reverse | list, {report.project.id: report.project}) }}
+      </div>
+    {% else %}
+      <div class="card"><p class="table-empty">No projects yet.</p></div>
+    {% endif %}
+
+  {% elif kind == 'client' %}
+    {% if report and report.projects %}
+      <div class="card">
+        <h2>{{ report.client }}</h2>
+        <p class="big">{{ report.total.minutes | duration }}</p>
+        <p class="mono">{{ report.total.minutes | hours }} hours ·
+          {{ report.total | earned(currency) }}</p>
+        <p class="muted">{{ report.projects | length }} projects</p>
+      </div>
+      <div class="card">
+        <h2>By project</h2>
+        {{ breakdown(report.by_project, 'Project', currency) }}
+      </div>
+    {% else %}
+      <div class="card"><p class="table-empty">No projects for that client.</p></div>
+    {% endif %}
+
+  {% else %}
+    {% if report and report.entries %}
+      <div class="card">
+        <h2>#{{ report.category }}</h2>
+        <p class="big">{{ report.total.minutes | duration }}</p>
+        <p class="mono">{{ report.total.minutes | hours }} hours ·
+          {{ report.total | earned(currency) }}</p>
+      </div>
+      <div class="card">
+        <h2>By project</h2>
+        {{ breakdown(report.by_project, 'Project', currency) }}
+      </div>
+    {% else %}
+      <div class="card">
+        <p class="table-empty">
+          {{ 'Nothing logged to that category.' if chosen else 'Pick a category above.' }}
+        </p>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

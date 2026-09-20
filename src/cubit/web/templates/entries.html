@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_macros.html" import entry_rows %}
+
+{% block content %}
+  <div class="row">
+    <h1>Entries</h1>
+    <div class="row-end">
+      <a class="btn btn-primary" href="{{ url_for('entries.new') }}">Add an entry</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <form class="row" method="get" action="{{ url_for('entries.index') }}">
+      <div class="field field-narrow">
+        <label for="filter-from">From</label>
+        <input id="filter-from" type="date" name="from" value="{{ filters.start | day }}">
+      </div>
+      <div class="field field-narrow">
+        <label for="filter-to">To</label>
+        <input id="filter-to" type="date" name="to" value="{{ filters.end | day }}">
+      </div>
+      <div class="field">
+        <label for="filter-project">Project</label>
+        <select id="filter-project" name="project">
+          <option value="">Every project</option>
+          {% for project in projects %}
+            <option value="{{ project.id }}" {% if filters.project_id == project.id %}selected{% endif %}>
+              {{ project.name }}{% if not project.is_active %} (archived){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-client">Client</label>
+        <select id="filter-client" name="client">
+          <option value="">Every client</option>
+          {% for name in clients %}
+            <option value="{{ name }}" {% if filters.client == name %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="filter-category">Category</label>
+        <input id="filter-category" name="category" value="{{ filters.category or '' }}"
+               list="every-category" placeholder="any">
+        <datalist id="every-category">
+          {% for name in categories %}<option value="{{ name }}">{% endfor %}
+        </datalist>
+      </div>
+      <div class="row-end">
+        <button class="btn btn-primary" type="submit">Filter</button>
+        <a class="btn btn-quiet" href="{{ url_for('entries.index', all=1) }}">Everything</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <p class="muted mono">
+      {{ entries | length }} {{ 'entry' if entries | length == 1 else 'entries' }} ·
+      {{ total.minutes | duration }} ({{ total.minutes | hours }} h) ·
+      {{ total | earned(currency) }}
+      {%- if not show_all and filters.start %} · {{ filters.start | day }} to {{ filters.end | day }}{% endif %}
+    </p>
+    {{ entry_rows(entries, projects_by_id) }}
+  </div>
+{% endblock %}

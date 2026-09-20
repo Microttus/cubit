@@ -17,6 +17,7 @@ import csv
 import io
 import json
 import os
+import secrets
 import tempfile
 import uuid
 from collections.abc import Iterable, Iterator, Mapping
@@ -135,6 +136,10 @@ class Storage:
     def lock_path(self) -> Path:
         return self.state_dir / "cubit.lock"
 
+    @property
+    def secret_key_path(self) -> Path:
+        return self.state_dir / "secret_key"
+
     def month_path(self, year: int, month: int) -> Path:
         """The entries file a given month lives in."""
         return self.entries_dir / f"{year:04d}-{month:02d}.csv"
@@ -167,6 +172,27 @@ class Storage:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         with self._lock:
             yield
+
+    def secret_key(self) -> bytes:
+        """The key that signs the web app's session cookie.
+
+        Generated on first use and kept in ``.state/`` beside the timer, so it
+        is never synced or committed, and readable only by its owner. It has to
+        survive a restart, or a form open in the browser would stop working
+        every time the server comes back.
+        """
+        if self.secret_key_path.exists():
+            existing = self.secret_key_path.read_bytes().strip()
+            if existing:
+                return existing
+
+        with self.lock():
+            if self.secret_key_path.exists() and self.secret_key_path.read_bytes().strip():
+                return self.secret_key_path.read_bytes().strip()
+            key = secrets.token_hex(32)
+            self._write_atomic(self.secret_key_path, key + "\n")
+            self.secret_key_path.chmod(0o600)
+            return key.encode("ascii")
 
     # ----------------------------------------------------------------- config
 

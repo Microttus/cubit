@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <div class="row">
+    <h1>Projects</h1>
+    <div class="row-end">
+      {% if archived_count %}
+        <a class="btn btn-quiet" href="{{ url_for('projects.index', all=None if show_all else 1) }}">
+          {{ 'Hide archived' if show_all else 'Show archived (%d)' % archived_count }}
+        </a>
+      {% endif %}
+      <a class="btn btn-primary" href="{{ url_for('projects.new') }}">New project</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Project</th>
+          <th>Client</th>
+          <th>Status</th>
+          <th class="numeric">Rate</th>
+          <th class="numeric">Budget</th>
+          <th class="numeric">Logged</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for project in projects %}
+          <tr>
+            <td>
+              <a href="{{ url_for('projects.detail', project_id=project.id) }}">{{ project.name }}</a>
+              <div class="muted mono">{{ project.id }}</div>
+            </td>
+            <td>{{ project.client }}</td>
+            <td>
+              {% if project.is_active %}
+                <span class="chip">active</span>
+              {% else %}
+                <span class="chip chip-muted">archived</span>
+              {% endif %}
+            </td>
+            <td class="numeric">
+              {% set rate = project.rates | selectattr('valid_from', 'le', today) | list %}
+              {{ "%.2f" | format(rate[-1].rate) if rate else '-' }}
+            </td>
+            <td class="numeric">{{ project.budget_hours if project.budget_hours is not none else '-' }}</td>
+            <td class="numeric">{{ logged.get(project.id, 0) | duration }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="6" class="table-empty">No projects yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

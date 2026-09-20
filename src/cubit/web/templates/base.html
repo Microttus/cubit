@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · cubit</title>
+  <link rel="icon" href="{{ url_for('static', filename='cubit-mark.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+</head>
+<body>
+  <header class="header">
+    <a class="brand" href="{{ url_for('dashboard.index') }}">
+      <img src="{{ url_for('static', filename='cubit-mark.svg') }}" alt="">
+      <span>cubit</span>
+    </a>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard.index') }}" {% if nav_active == 'dashboard' %}class="is-active"{% endif %}>Dashboard</a>
+      <a href="{{ url_for('entries.index') }}" {% if nav_active == 'entries' %}class="is-active"{% endif %}>Entries</a>
+      <a href="{{ url_for('projects.index') }}" {% if nav_active == 'projects' %}class="is-active"{% endif %}>Projects</a>
+      <a href="{{ url_for('reports.index') }}" {% if nav_active == 'reports' %}class="is-active"{% endif %}>Reports</a>
+      <form class="theme-toggle inline-form" method="post" action="{{ url_for('settings.set_theme') }}">
+        {{ csrf_input() }}
+        <input type="hidden" name="theme" value="{{ 'light' if theme == 'dark' else 'dark' }}">
+        <button type="submit" title="Switch to the {{ 'light' if theme == 'dark' else 'dark' }} theme">
+          {{ '☀' if theme == 'dark' else '☾' }}
+        </button>
+      </form>
+    </nav>
+  </header>
+
+  <main class="page">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for level, message in messages %}
+        <div class="flash flash-{{ level }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</body>
+</html>

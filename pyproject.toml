@@ -27,6 +27,11 @@ cubit = "cubit.cli.main:app"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# The web app's templates, stylesheet, script, logo and fonts ship with it, so
+# nothing is fetched from the internet at runtime (FR-35, FR-58).
+cubit = ["web/templates/*.html", "web/static/*", "web/static/fonts/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

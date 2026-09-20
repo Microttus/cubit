@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div class="card">
+    <form class="stack" method="post" action="{{ url_for('projects.create') }}">
+      {{ csrf_input() }}
+      <div class="row">
+        <div class="field">
+          <label for="id">Id</label>
+          <input id="id" name="id" required placeholder="acme-web" pattern="[a-z0-9]+(-[a-z0-9]+)*">
+        </div>
+        <div class="field field-wide">
+          <label for="name">Name</label>
+          <input id="name" name="name" required placeholder="Acme website">
+        </div>
+        <div class="field">
+          <label for="client">Client</label>
+          <input id="client" name="client" placeholder="Acme Corp">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field field-narrow">
+          <label for="rate">Hourly rate</label>
+          <input id="rate" name="rate" placeholder="95">
+        </div>
+        <div class="field field-narrow">
+          <label for="rate_from">Rate starts</label>
+          <input id="rate_from" type="date" name="rate_from">
+        </div>
+        <div class="field field-narrow">
+          <label for="budget_hours">Budget (hours)</label>
+          <input id="budget_hours" name="budget_hours" placeholder="120">
+        </div>
+        <div class="row-end">
+          <a class="btn btn-quiet" href="{{ url_for('projects.index') }}">Cancel</a>
+          <button class="btn btn-primary" type="submit">Create</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <p class="muted">The id is how entries refer to this project, so it cannot be changed later.
+    Leave the rate empty for unpaid or internal work.</p>
+{% endblock %}

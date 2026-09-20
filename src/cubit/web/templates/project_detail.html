@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% from "_macros.html" import breakdown, budget_meter %}
+
+{% block content %}
+  <div class="row">
+    <h1>{{ project.name }} <span class="muted mono">{{ project.id }}</span></h1>
+    <div class="row-end">
+      <form class="inline-form" method="post" action="{{ url_for('projects.archive', project_id=project.id) }}">
+        {{ csrf_input() }}
+        {% if not project.is_active %}<input type="hidden" name="undo" value="1">{% endif %}
+        <button class="btn btn-quiet" type="submit">{{ 'Unarchive' if not project.is_active else 'Archive' }}</button>
+      </form>
+      {% if not report.entries %}
+        <form class="inline-form" method="post" action="{{ url_for('projects.delete', project_id=project.id) }}"
+              onsubmit="return confirm('Delete this project?')">
+          {{ csrf_input() }}
+          <button class="btn btn-danger" type="submit">Delete</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        <h2>Details</h2>
+        <form class="row" method="post" action="{{ url_for('projects.update', project_id=project.id) }}">
+          {{ csrf_input() }}
+          <div class="field field-wide">
+            <label for="name">Name</label>
+            <input id="name" name="name" value="{{ project.name }}" required>
+          </div>
+          <div class="field">
+            <label for="client">Client</label>
+            <input id="client" name="client" value="{{ project.client }}">
+          </div>
+          <div class="field field-narrow">
+            <label for="budget_hours">Budget (hours)</label>
+            <input id="budget_hours" name="budget_hours"
+                   value="{{ project.budget_hours if project.budget_hours is not none else '' }}">
+          </div>
+          <div class="row-end">
+            <button class="btn btn-primary" type="submit">Save</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Categories</h2>
+        <p>
+          {% for name in suggestions %}
+            <span class="chip">#{{ name }}</span>
+            <form class="inline-form" method="post"
+                  action="{{ url_for('projects.remove_category', project_id=project.id, name=name) }}">
+              {{ csrf_input() }}
+              <button class="btn btn-quiet btn-small" type="submit" title="Stop suggesting #{{ name }}">×</button>
+            </form>
+          {% else %}
+            <span class="muted">None registered yet. They appear as you use them.</span>
+          {% endfor %}
+        </p>
+        <form class="row" method="post" action="{{ url_for('projects.add_category', project_id=project.id) }}">
+          {{ csrf_input() }}
+          <div class="field">
+            <label for="category">Register a category</label>
+            <input id="category" name="category" placeholder="software-coding" required>
+          </div>
+          <div class="row-end"><button class="btn" type="submit">Add</button></div>
+        </form>
+      </div>
+
+      {% if report.by_category %}
+        <div class="card">
+          <h2>By category</h2>
+          {{ breakdown(report.by_category, 'Category', currency) }}
+        </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Logged</h2>
+        <p class="big">{{ report.total.minutes | duration }}</p>
+        <p class="muted mono">{{ report.total.minutes | hours }} hours over
+          {{ report.entries | length }} entries</p>
+        <p class="mono">{{ report.total | earned(currency) }}</p>
+        {% if report.budget %}
+          <h3>Budget</h3>
+          {{ budget_meter(report.budget) }}
+        {% else %}
+          <p class="muted">No hour budget set.</p>
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h2>Rates</h2>
+        <table>
+          <tbody>
+            {% for step in project.rates %}
+              <tr>
+                <td class="mono">from {{ step.valid_from | day }}</td>
+                <td class="numeric">{{ "%.2f" | format(step.rate) }} {{ currency }}</td>
+              </tr>
+            {% else %}
+              <tr><td class="table-empty">No rates: this time is unrated.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <form class="row" method="post" action="{{ url_for('projects.add_rate', project_id=project.id) }}">
+          {{ csrf_input() }}
+          <div class="field field-narrow">
+            <label for="rate">New rate</label>
+            <input id="rate" name="rate" placeholder="105" required>
+          </div>
+          <div class="field field-narrow">
+            <label for="valid_from">From</label>
+            <input id="valid_from" type="date" name="valid_from">
+          </div>
+          <div class="row-end"><button class="btn" type="submit">Add</button></div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Entries</h2>
+        <p><a class="btn" href="{{ url_for('entries.index', project=project.id, all=1) }}">
+          See all {{ report.entries | length }} entries</a></p>
+      </div>
+    </div>
+  </div>
+{% endblock %}

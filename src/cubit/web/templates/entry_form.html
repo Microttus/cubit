@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import datalists %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div class="card">
+    <form class="stack" method="post"
+          action="{{ url_for('entries.update', entry_id=entry.id) if entry else url_for('entries.create') }}">
+      {{ csrf_input() }}
+      <div class="row">
+        <div class="field">
+          <label for="project">Project</label>
+          <select id="project" name="project_id" data-project-select required>
+            {% for project in projects %}
+              <option value="{{ project.id }}"
+                {% if entry and entry.project_id == project.id %}selected{% endif %}>
+                {{ project.name }}{% if not project.is_active %} (archived){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field field-narrow">
+          <label for="duration">Duration</label>
+          <input id="duration" name="duration" required
+                 value="{{ entry.duration_minutes | duration if entry else '' }}"
+                 placeholder="1h30m">
+        </div>
+        <div class="field field-narrow">
+          <label for="date">Date</label>
+          <input id="date" type="date" name="date" value="{{ default_date | day }}" required>
+        </div>
+        <div class="field field-narrow">
+          <label for="start">Start (optional)</label>
+          <input id="start" type="time" name="start" value="{{ entry.start | clock if entry else '' }}">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="category">Category</label>
+          <input id="category" name="category" data-category-input
+                 value="{{ entry.category if entry and entry.category else '' }}"
+                 list="categories-{{ entry.project_id if entry else (projects[0].id if projects else '') }}"
+                 placeholder="software-coding">
+        </div>
+        <div class="field field-wide">
+          <label for="note">Note</label>
+          <input id="note" name="note" value="{{ entry.note if entry else '' }}"
+                 placeholder="What the time was spent on">
+        </div>
+      </div>
+
+      <div class="row">
+        <label class="muted">
+          <input type="checkbox" name="force" value="1" style="width: auto"> Allow an archived project
+        </label>
+        <div class="row-end">
+          <a class="btn btn-quiet" href="{{ url_for('entries.index') }}">Cancel</a>
+          <button class="btn btn-primary" type="submit">{{ 'Save' if entry else 'Log it' }}</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <p class="muted">Durations accept 90m, 1h30m, 1.5h and 1:30. A new category is registered
+    on the project as soon as you use it.</p>
+
+  {{ datalists(suggestions) }}
+{% endblock %}

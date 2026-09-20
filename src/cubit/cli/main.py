@@ -89,6 +89,27 @@ def init(ctx: typer.Context) -> None:
     echo('Next: cubit project add acme-web --name "Acme website" --client "Acme Corp" --rate 95')
 
 
+@app.command()
+def web(
+    ctx: typer.Context,
+    host: str = typer.Option("127.0.0.1", "--host", help="Interface to listen on."),
+    port: int = typer.Option(8000, "--port", help="Port to listen on."),
+) -> None:
+    """Start the local web app."""
+    # FR-30, FR-35: loopback only, and nothing is fetched from the internet.
+    # Imported here so the rest of the CLI never has to load Flask.
+    from cubit.web import create_app
+
+    app_ctx = get_context(ctx)
+    app_ctx.require_folder()
+    flask_app = create_app(app_ctx.data_dir)
+
+    echo(f"cubit is at {accent(f'http://{host}:{port}')}")
+    echo(muted(f"  data folder {app_ctx.data_dir}"))
+    echo(muted("  press ctrl-c to stop"))
+    flask_app.run(host=host, port=port, debug=False)
+
+
 entries.register(app)
 app.add_typer(projects.app, name="project")
 app.add_typer(reports.app, name="report")

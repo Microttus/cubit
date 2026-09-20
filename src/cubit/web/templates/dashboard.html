@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% from "_macros.html" import category_chip, datalists, entry_rows %}
+
+{% block content %}
+  <h1>Dashboard</h1>
+
+  <div class="grid-2">
+    <div>
+      <div class="card">
+        {% if timer %}
+          <h2>Running</h2>
+          <p class="big" data-started-at="{{ timer.started_at | iso }}">{{ elapsed | duration }}</p>
+          <p>
+            <strong>{{ entry_project_name(projects_by_id, timer.project_id) }}</strong>
+            {{ category_chip(timer.category) }}
+          </p>
+          {% if timer.note %}<p class="muted">{{ timer.note }}</p>{% endif %}
+          <p class="muted mono">started {{ timer.started_at.astimezone().strftime('%H:%M') }}</p>
+
+          <form class="row" method="post" action="{{ url_for('dashboard.stop') }}">
+            {{ csrf_input() }}
+            <div class="field field-wide">
+              <label for="stop-note">Note</label>
+              <input id="stop-note" name="note" value="{{ timer.note }}" placeholder="What did you do?">
+            </div>
+            <div class="field">
+              <label for="stop-category">Category</label>
+              <input id="stop-category" name="category" value="{{ timer.category or '' }}"
+                     list="categories-{{ timer.project_id }}" placeholder="software-coding">
+            </div>
+            <div class="row-end">
+              <button class="btn btn-primary" type="submit">Stop and log</button>
+            </div>
+          </form>
+          <form class="inline-form" method="post" action="{{ url_for('dashboard.cancel') }}"
+                onsubmit="return confirm('Drop this timer? Nothing will be logged.')">
+            {{ csrf_input() }}
+            <button class="btn btn-danger btn-small" type="submit">Cancel timer</button>
+          </form>
+        {% else %}
+          <h2>Start a timer</h2>
+          {% if projects %}
+            <form class="row" method="post" action="{{ url_for('dashboard.start') }}">
+              {{ csrf_input() }}
+              <div class="field">
+                <label for="start-project">Project</label>
+                <select id="start-project" name="project_id" data-project-select required>
+                  {% for project in projects %}
+                    <option value="{{ project.id }}">{{ project.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="field">
+                <label for="start-category">Category</label>
+                <input id="start-category" name="category" data-category-input
+                       list="categories-{{ projects[0].id }}" placeholder="software-coding">
+              </div>
+              <div class="field field-wide">
+                <label for="start-note">Note</label>
+                <input id="start-note" name="note" placeholder="What are you working on?">
+              </div>
+              <div class="row-end">
+                <button class="btn btn-primary" type="submit">Start</button>
+              </div>
+            </form>
+          {% else %}
+            <p class="muted">No active projects yet.</p>
+            <p><a class="btn" href="{{ url_for('projects.new') }}">Create a project</a></p>
+          {% endif %}
+        {% endif %}
+      </div>
+
+      <div class="card">
+        <h2>Today · {{ today | day }}</h2>
+        <p class="big">{{ todays_minutes | duration }}</p>
+        {{ entry_rows(todays_entries | reverse | list, projects_by_id) }}
+        <p><a class="btn" href="{{ url_for('entries.new') }}">Add an entry</a></p>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>This week</h2>
+        <p class="big">{{ week.total.minutes | duration }}</p>
+        <p class="muted mono">{{ week.start | day }} to {{ week.end | day }}</p>
+        <table>
+          <tbody>
+            {% for line in week.by_day %}
+              <tr>
+                <td class="mono">{{ line.key }}</td>
+                <td class="numeric">{{ line.amount.minutes | duration }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td>Total</td>
+              <td class="numeric">{{ week.total.minutes | duration }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {% if week.by_project %}
+        <div class="card">
+          <h2>By project</h2>
+          <table>
+            <tbody>
+              {% for line in week.by_project %}
+                <tr>
+                  <td>{{ line.label }}</td>
+                  <td class="numeric">{{ line.amount.minutes | duration }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {{ datalists(suggestions) }}
+{% endblock %}

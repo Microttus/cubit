@@ -1,0 +1,109 @@
+{# Shared pieces. Every colour and font comes from theme.css via app.css. #}
+
+{% macro category_chip(slug) %}
+  {%- if slug -%}
+    <span class="chip">#{{ slug }}</span>
+  {%- else -%}
+    <span class="chip chip-muted">uncategorized</span>
+  {%- endif -%}
+{% endmacro %}
+
+{% macro datalists(suggestions) %}
+  {# One list per project, so the input can follow the selected project (FR-50). #}
+  {% for project_id, names in suggestions.items() %}
+    <datalist id="categories-{{ project_id }}">
+      {% for name in names %}<option value="{{ name }}">{% endfor %}
+    </datalist>
+  {% endfor %}
+{% endmacro %}
+
+{% macro breakdown(lines, heading, currency) %}
+  {% set total = lines | sum(attribute='amount.minutes') %}
+  {% set any_unrated = lines | selectattr('amount.unrated_minutes') | list | length > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th>{{ heading }}</th>
+        <th class="numeric">Time</th>
+        <th class="numeric">Hours</th>
+        <th>Share</th>
+        <th class="numeric">Earned ({{ currency }})</th>
+        {% if any_unrated %}<th class="numeric">Unrated</th>{% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+        <tr>
+          <td>{{ line.label }}</td>
+          <td class="numeric">{{ line.amount.minutes | duration }}</td>
+          <td class="numeric">{{ line.amount.minutes | hours }}</td>
+          <td style="width: 22%">
+            <div class="bar" style="width: {{ (line.amount.minutes * 100 // total) if total else 0 }}%"></div>
+          </td>
+          <td class="numeric">
+            {%- if line.amount.has_earnings %}{{ "%.2f" | format(line.amount.earnings) }}{% else %}-{% endif -%}
+          </td>
+          {% if any_unrated %}
+            <td class="numeric">
+              {%- if line.amount.unrated_minutes %}{{ line.amount.unrated_minutes | duration }}{% else %}-{% endif -%}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro entry_rows(entries, projects_by_id) %}
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th class="numeric">Start</th>
+        <th class="numeric">End</th>
+        <th class="numeric">Time</th>
+        <th>Project</th>
+        <th>Category</th>
+        <th>Note</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for entry in entries %}
+        <tr>
+          <td class="mono">{{ entry.date | day }}<span class="muted"> {{ entry.date | weekday }}</span></td>
+          <td class="numeric">{{ entry.start | clock }}</td>
+          <td class="numeric">{{ entry.end | clock }}</td>
+          <td class="numeric">{{ entry.duration_minutes | duration }}</td>
+          <td>{{ entry_project_name(projects_by_id, entry.project_id) }}</td>
+          <td>{{ category_chip(entry.category) }}</td>
+          <td>{{ entry.note }}</td>
+          <td class="numeric">
+            <a class="btn btn-quiet btn-small" href="{{ url_for('entries.edit', entry_id=entry.id) }}">Edit</a>
+            <form class="inline-form" method="post"
+                  action="{{ url_for('entries.delete', entry_id=entry.id) }}"
+                  onsubmit="return confirm('Delete this entry?')">
+              {{ csrf_input() }}
+              <button class="btn btn-danger btn-small" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {% else %}
+        <tr><td colspan="8" class="table-empty">No entries.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endmacro %}
+
+{% macro budget_meter(budget) %}
+  {% set percent = budget.percent_used | float %}
+  <div class="meter meter-{{ budget.state }}">
+    <span style="width: {{ 100 if percent > 100 else percent }}%"></span>
+  </div>
+  <p class="mono state-{{ budget.state }}">
+    {{ budget.used_minutes | duration }} of {{ budget.budget_minutes | duration }}
+    ({{ budget.percent_used }}%)
+    {%- if budget.is_over %}, {{ (-budget.remaining_minutes) | duration }} over budget
+    {%- else %}, {{ budget.remaining_minutes | duration }} left{% endif %}
+  </p>
+{% endmacro %}
