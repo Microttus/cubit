@@ -1,10 +1,10 @@
 # Cubit: Requirements
 
-Version: 0.2 (draft for review) · Owner: IceCube Solutions
+Version: 0.3 (draft for review) · Owner: IceCube Solutions
 
 ## 1. Purpose
 
-Cubit is a time-logging application for a single-person company. It records how many hours are worked on which client project, with a short note, and produces summaries of that time. It is used from a command line and from a local web app, both working on the same data.
+Cubit is a time-logging application for a single-person company. It records how many hours are worked on which client project, with a short note, and produces summaries of that time. It is used from a command line, from a local web app and, on macOS, from a menu bar icon, all working on the same data.
 
 ## 2. Decisions so far
 
@@ -12,7 +12,7 @@ Cubit is a time-logging application for a single-person company. It records how 
 |---|---|
 | Name | **Cubit** (CLI command `cubit`) |
 | Users | One person, one machine (for now) |
-| Interfaces | CLI **and** local web app, sharing one core |
+| Interfaces | CLI **and** local web app, sharing one core, plus an optional macOS menu bar app (3.9) |
 | Logging | Start/stop timer **and** manual entry |
 | Storage | Plain text, human-readable and editable: CSV (entries), YAML (projects, config), JSON (timer state) |
 | Data location | Local folder; sync possible later, not built now |
@@ -22,6 +22,7 @@ Cubit is a time-logging application for a single-person company. It records how 
 | Reports | Weekly and monthly summaries; per-client and per-project reports |
 | Stack | Python 3.11+, Typer, Flask, Pydantic, ruamel.yaml |
 | Look and feel | Cubit's own identity (logo, palette), inspired by the IceCube Solutions site. Dark by default, light "ice" variant. Starter files in `design/`, see 3.8 |
+| Running on macOS | Installed with `pipx`. Optional menu bar icon (in the style of JetBrains Toolbox) to start and stop the timer, see totals and open the dashboard. Can start at login, see 3.9 |
 
 ## 3. Functional requirements
 
@@ -137,6 +138,60 @@ Starter files are in `design/`: `cubit-mark.svg` (logo and favicon), `theme.css`
 | FR-59 | Should | CLI output uses the accent color sparingly and respects `NO_COLOR`. |
 | FR-62 | Should | Dark theme by default, light "ice" theme available. `theme: dark \| light \| auto` in `config.yaml`, plus a toggle in the header. |
 
+### 3.9 macOS menu bar app
+
+An optional app for macOS, in the style of JetBrains Toolbox: an icon at the top right of the menu bar that opens a small menu. It is a third front end on the same core, so a timer started here shows up in the CLI and the web app, and the other way round. The core, CLI and web app stay cross-platform.
+
+Idle:
+
+```
+Cubit
+------------------------------
+Start timer        >  acme-web   >  #software-coding
+                      internal      #project-management
+                      ...           No category
+                                    New category...
+------------------------------
+Today            3:25
+This week       14:10
+------------------------------
+Open dashboard
+Quit Cubit
+```
+
+Running (the menu bar shows the solid icon and, for example, `1:24`):
+
+```
+acme-web  #software-coding
+Since 09:05  -  1:24
+Stop timer...
+Cancel timer
+------------------------------
+Today            3:25
+This week       14:10
+------------------------------
+Open dashboard
+Quit Cubit
+```
+
+| ID | Pri | Requirement |
+|---|---|---|
+| FR-63 | Must | `cubit menubar` starts a macOS menu bar app: an icon at the top right of the menu bar that opens the menu above when clicked. It has no Dock icon. On other platforms the command says it is macOS only. |
+| FR-64 | Must | Idle: the idle icon. Running: the running icon, plus a title next to it set by `menubar_title` in `config.yaml` (`none`, `time` or `project-time`; default `time`), for example `1:24`. |
+| FR-65 | Must | **Start timer** is a submenu of active projects (most recently used first, at most 8). Each project opens a submenu with its categories in suggestion order (FR-46), "No category" and "New category...". Choosing an item starts the timer immediately. |
+| FR-66 | Must | While a timer runs, the menu shows project, category and start time, plus **Stop timer** and **Cancel timer** (FR-4). Stop asks for an optional note in a small dialog, prefilled with the timer's note (FR-2). |
+| FR-67 | Must | The menu shows today's and this week's totals as `H:MM`, refreshed whenever the menu opens. |
+| FR-68 | Must | **Open dashboard** opens the web app in the default browser. If the web app is not answering on its port, the menu bar app first starts `cubit web` in the background. The web app exposes `/healthz` so the menu bar app can check that the process on that port is Cubit. A server the menu bar app started is stopped when it quits; one that was already running is left alone. |
+| FR-69 | Must | **Quit Cubit** closes the menu bar app only. A running timer keeps running, because it lives in `.state/timer.json` (FR-8). |
+| FR-70 | Must | State is shared: a change made in the CLI or web app shows up in the menu bar within 30 seconds, and immediately when the menu is opened. |
+| FR-71 | Must | The menu bar app contains no business logic. It calls `cubit.core` for everything, and its menu contents (title, items, ordering, totals) are built by a pure function that can be tested without macOS. |
+| FR-72 | Must | Icons are monochrome template images (black with transparency), so macOS adapts them to light and dark menu bars. They live in `design/menubar/`: idle and running PNGs (64x64 px, so they stay sharp on retina screens, loaded with `template=True`) and their SVG sources. Idle is an outlined cube; running is a solid cube. |
+| FR-73 | Must | Errors never fail silently. If the data files are invalid or locked, the menu shows a "Data problem: run `cubit check`" item. Unexpected errors show a notification and are logged. |
+| FR-74 | Should | Start at login: `cubit menubar install-login` writes a LaunchAgent (`no.icecubesol.cubit`) that starts the app at login, and `uninstall-login` removes it. Quitting from the menu does not relaunch it. |
+| FR-75 | Should | Installation: `pipx install ".[menubar]"` puts `cubit` on the PATH. `rumps` is an optional extra, installed on macOS only. During development: `pip install -e ".[menubar]"`. |
+| FR-76 | Could | **Add entry...** in the menu for a quick manual entry (project, duration, note) through dialogs. |
+| FR-77 | Could | Notification when a timer has run longer than a configurable number of hours (default 8), to catch a forgotten timer. |
+
 ## 4. Data model and file formats
 
 Default folder: `~/cubit-data`
@@ -203,6 +258,7 @@ week_starts_on: monday
 budget_warning_percent: 80
 prompt_for_category: true
 theme: dark                   # dark | light | auto
+menubar_title: time           # none | time | project-time (macOS menu bar)
 ```
 
 ### 4.4 `.state/timer.json`
@@ -242,11 +298,11 @@ Defined in `web/static/theme.css`, started from `design/theme.css`, and used by 
 
 Also defined in the file: translucent accent tints for chips and soft buttons, the header background, the background glow, card shadow and a spacing scale. Durations and totals use the mono font so columns line up.
 
-**Logo:** `design/cubit-mark.svg`, an isometric ice cube whose top face is a clock showing 3:00. It doubles as the favicon. The header shows the mark followed by the word "cubit" in `--font-mono`. See `design/brand-preview.svg` for the result.
+**Logo:** `design/cubit-mark.svg`, an isometric ice cube whose top face is a clock showing 3:00. It doubles as the favicon. The header shows the mark followed by the word "cubit" in `--font-mono`. See `design/brand-preview.svg` for the result. The macOS menu bar uses separate monochrome versions of the mark (FR-72).
 
 ## 5. Non-functional requirements
 
-- **Platforms:** Windows, macOS, Linux; Python 3.11+.
+- **Platforms:** core, CLI and web app run on Windows, macOS and Linux (Python 3.11+). The menu bar app is macOS only and optional.
 - **Data safety:** no partial rows, no lost data on crashes or concurrent use (FR-39).
 - **Privacy:** everything stays on the machine. No telemetry, no network calls.
 - **Simplicity:** few dependencies; adding one needs a reason.
@@ -257,9 +313,9 @@ Also defined in the file: translucent accent tints for chips and soft buttons, t
 ## 6. Architecture
 
 ```
-CLI (Typer)  ─┐
-              ├─▶  core  ─▶  files (CSV / YAML / JSON)
-Web (Flask)  ─┘
+CLI (Typer)        ─┐
+Web (Flask)        ─┼─▶  core  ─▶  files (CSV / YAML / JSON)
+Menu bar (rumps)   ─┘   (macOS only, optional)
 ```
 
 - `core` holds models, storage, timer, rate lookup, duration parsing and reports.
@@ -273,10 +329,11 @@ Planned layout:
 src/cubit/
 ├── core/    # models, storage, timer, rates, durations, reports
 ├── cli/     # Typer app and commands
-└── web/     # Flask app, templates/, static/ (theme.css, logo, fonts)
+├── web/     # Flask app, templates/, static/ (theme.css, logo, fonts)
+└── menubar/ # macOS menu bar app (rumps), optional; menu logic in a pure module
 tests/
 └── fixtures/
-design/    # starter theme.css, logo and brand preview (copied to web/static in M4)
+design/    # theme.css, logo, brand preview (used in M4) and menubar/ icons (used in M6)
 ```
 
 ## 7. Out of scope for v1
@@ -301,6 +358,8 @@ design/    # starter theme.css, logo and brand preview (copied to web/static in 
 7. **One category per entry:** keeps category totals clean. Several per entry would count the same hours twice in category reports.
 8. **Palette and logo:** proposals, based on the site but Cubit's own (section 4.5 and `design/`). Adjust freely: only `theme.css` and the logo files change.
 9. ~~**JetBrains Sans license:**~~ **Resolved:** only JetBrains Mono is bundled (SIL OFL). JetBrains Sans is not redistributed; body text uses Inter, then the system UI font. See FR-58.
+10. **Menu bar library:** `rumps` (Python, same codebase) is proposed. A native Swift menu bar app could offer a richer popover, but it would be a second codebase.
+11. **Menu bar title:** elapsed time only by default. `project-time` also shows the project but takes more menu bar space.
 
 ## 9. Milestones
 
@@ -311,3 +370,4 @@ design/    # starter theme.css, logo and brand preview (copied to web/static in 
 | M3 | Reports | Core report functions and CLI output (week, month, project, client) |
 | M4 | Web app | Dashboard, entries, projects, reports, theme, CSRF |
 | M5 | Polish | `cubit check`, docs, shell completion |
+| M6 | macOS menu bar app | `cubit menubar` (rumps): icons, start/stop timer, totals, open dashboard, start at login. Needs M2 and M4 |
