@@ -15,7 +15,7 @@ import typer
 from typer.core import TyperGroup
 
 from cubit import __version__
-from cubit.cli import entries, projects
+from cubit.cli import entries, projects, reports
 from cubit.cli.context import build_context, get_context
 from cubit.cli.exit_codes import EXIT_ERROR
 from cubit.cli.output import accent, echo, muted, paint
@@ -91,6 +91,7 @@ def init(ctx: typer.Context) -> None:
 
 entries.register(app)
 app.add_typer(projects.app, name="project")
+app.add_typer(reports.app, name="report")
 
 
 if __name__ == "__main__":  # pragma: no cover - exercised as a subprocess

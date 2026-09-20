@@ -12,10 +12,20 @@ import sys
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, time
+from decimal import Decimal
 
 import typer
 
-from cubit.core import Entry, Project, display_category, format_duration, format_hours
+from cubit.core import (
+    Amount,
+    BudgetStatus,
+    Entry,
+    Line,
+    Project,
+    display_category,
+    format_duration,
+    format_hours,
+)
 
 #: Cubit's cyan accent, the terminal's nearest equivalent of --color-accent.
 ACCENT = typer.colors.CYAN
@@ -140,3 +150,80 @@ ENTRY_COLUMNS = (
     Column("CATEGORY"),
     Column("NOTE"),
 )
+
+
+def format_money(value: Decimal, currency: str) -> str:
+    """An amount with its currency, e.g. ``1250.00 EUR``."""
+    return f"{value:.2f} {currency}"
+
+
+def format_earnings(amount: Amount, currency: str) -> str:
+    """Money earned, saying plainly when some of the time had no rate (FR-15)."""
+    if not amount.has_earnings and not amount.is_fully_rated:
+        return "unrated"
+    money = format_money(amount.earnings, currency)
+    if amount.is_fully_rated:
+        return money
+    return f"{money} + {format_duration(amount.unrated_minutes)} unrated"
+
+
+def breakdown_table(lines: Sequence[Line], heading: str, currency: str) -> str:
+    """One breakdown of a report: label, time, share and earnings.
+
+    Unrated time gets its own column, and only when there is some, so money
+    still lines up in the EARNED column instead of being pushed sideways by a
+    trailing note (FR-15, FR-28).
+    """
+    total = sum(line.amount.minutes for line in lines)
+    any_unrated = any(line.amount.unrated_minutes for line in lines)
+
+    columns = [
+        Column(heading),
+        Column("TIME", "right"),
+        Column("HOURS", "right"),
+        Column("SHARE", "right"),
+        Column(f"EARNED ({currency})", "right"),
+    ]
+    if any_unrated:
+        columns.append(Column("UNRATED", "right"))
+
+    rows = []
+    for line in lines:
+        amount = line.amount
+        row = [
+            line.label,
+            format_duration(amount.minutes),
+            format_hours(amount.minutes),
+            _share(amount.minutes, total),
+            f"{amount.earnings:.2f}" if amount.has_earnings else "-",
+        ]
+        if any_unrated:
+            row.append(format_duration(amount.unrated_minutes) if amount.unrated_minutes else "-")
+        rows.append(row)
+    return table(tuple(columns), rows)
+
+
+def _share(minutes: int, total: int) -> str:
+    if total <= 0:
+        return "-"
+    return f"{Decimal(minutes) * 100 / Decimal(total):.0f}%"
+
+
+def budget_line(status: BudgetStatus) -> str:
+    """The budget, coloured by how close it is to running out (FR-22)."""
+    used = format_duration(status.used_minutes)
+    budget = format_duration(status.budget_minutes)
+    text = f"{used} of {budget} ({status.percent_used}%)"
+
+    if status.is_over:
+        over = format_duration(-status.remaining_minutes)
+        return paint(f"{text}, {over} over budget", DANGER)
+    remaining = f"{format_duration(status.remaining_minutes)} left"
+    if status.is_warning:
+        return paint(f"{text}, {remaining}", WARNING)
+    return f"{text}, {remaining}"
+
+
+def heading(text: str) -> str:
+    """A section heading, in the accent colour."""
+    return accent(text)
