@@ -208,10 +208,10 @@ theme: dark                   # dark | light | auto
 Exists only while a timer is running. Kept out of `entries/` and `projects.yaml` so it does not get synced or committed by accident.
 
 ```json
-{"project_id": "acme-web", "started_at": "2026-09-18T09:05:12+02:00", "note": "Landing page layout"}
+{"project_id": "acme-web", "started_at": "2026-09-18T09:05:12+02:00", "category": "software-coding", "note": "Landing page layout"}
 ```
 
-`started_at` is timezone-aware, so elapsed time stays correct across DST changes. Stored entries use local `HH:MM`.
+`started_at` is timezone-aware, so elapsed time stays correct across DST changes. Stored entries use local `HH:MM`. `category` is the optional category the timer was started with (FR-1); it is `null` when the timer has none, and can still be changed at stop.
 
 ### 4.5 Theme tokens
 

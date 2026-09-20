@@ -1,0 +1,81 @@
+"""Cubit's core: models, storage, timer, rates, durations and categories.
+
+Everything business-related lives here. This package must never import Typer or
+Flask; the CLI and the web app are thin layers on top of it (AGENT.md).
+"""
+
+from cubit.core.categories import (
+    closest_category,
+    display_category,
+    normalize_category,
+    normalize_optional_category,
+    rank_categories,
+    suggest_categories,
+)
+from cubit.core.durations import (
+    format_duration,
+    format_hours,
+    minutes_between,
+    parse_duration,
+)
+from cubit.core.errors import (
+    CategoryError,
+    CubitError,
+    DataFileError,
+    DurationError,
+    ProjectError,
+    TimerError,
+)
+from cubit.core.models import (
+    Config,
+    Entry,
+    Project,
+    ProjectStatus,
+    Rate,
+    TimerState,
+)
+from cubit.core.rates import earnings, earnings_for_entry, is_unrated, rate_for_date
+from cubit.core.storage import (
+    DEFAULT_DATA_DIR,
+    ENTRY_COLUMNS,
+    Storage,
+    resolve_data_dir,
+)
+from cubit.core.timer import elapsed_minutes, elapsed_seconds, entry_from_timer, now_local
+
+__all__ = [
+    "DEFAULT_DATA_DIR",
+    "ENTRY_COLUMNS",
+    "CategoryError",
+    "Config",
+    "CubitError",
+    "DataFileError",
+    "DurationError",
+    "Entry",
+    "Project",
+    "ProjectError",
+    "ProjectStatus",
+    "Rate",
+    "Storage",
+    "TimerError",
+    "TimerState",
+    "closest_category",
+    "display_category",
+    "earnings",
+    "earnings_for_entry",
+    "elapsed_minutes",
+    "elapsed_seconds",
+    "entry_from_timer",
+    "format_duration",
+    "format_hours",
+    "is_unrated",
+    "minutes_between",
+    "normalize_category",
+    "normalize_optional_category",
+    "now_local",
+    "parse_duration",
+    "rank_categories",
+    "rate_for_date",
+    "resolve_data_dir",
+    "suggest_categories",
+]
