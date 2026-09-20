@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: in design.** This README describes the intended behaviour. Nothing is implemented yet. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification.
+> **Status: early.** The core is built and tested -- models, plain-text storage with atomic locked writes, duration parsing, rate history and categories. The CLI is still only `cubit --version`, and the web app is not started. Everything marked *(planned)* below describes the intended behaviour, not what runs today. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
 
 ## Features (planned)
 
@@ -105,17 +105,25 @@ You can edit these files by hand. Cubit validates them on load and tells you whi
 
 ## Development
 
-- Stack: Python 3.11+, Typer, Flask, Pydantic, ruamel.yaml, pytest, ruff
+- Stack: Python 3.11+, Typer, Flask, Pydantic, ruamel.yaml, filelock, pytest, ruff
 - Architecture and contribution rules: [AGENT.md](AGENT.md)
 - Requirements, data model and milestones: [REQUIREMENTS.md](REQUIREMENTS.md)
 - Logo, theme tokens and brand preview: [design/](design/)
 
 ```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
+pip install -e .
+
 pytest
-ruff check .
+ruff check . && ruff format .
 ```
+
+The code is laid out `src/cubit/{core,cli,web}`. All business logic lives in
+`cubit.core`, which never imports Typer or Flask, and every read and write of a
+data file goes through `cubit.core.storage`.
 
 ## License
 
-To be decided.
+MIT. See [LICENSE](LICENSE).

@@ -6,7 +6,7 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** design phase, no code yet. Keep this file up to date as the repo takes shape, especially the Commands section.
+**Status:** milestone 1 (core) is built and tested. The CLI is only an entry point with `--version`; the web app is an empty package. Keep this file up to date as the repo takes shape, especially the Commands section.
 
 ## Source of truth
 
@@ -18,28 +18,40 @@ Cubit is a time-logging tool for a one-person company (IceCube Solutions). It ha
 
 Python 3.11+ · Typer (CLI) · Flask + Jinja2 (web) · Pydantic v2 (validation) · ruamel.yaml · filelock · pytest · ruff
 
-## Layout (planned)
+## Layout
 
 ```
 src/cubit/
-├── core/    # models, storage, timer, rates, durations, reports
-├── cli/     # Typer app and commands
-└── web/     # Flask app, templates/, static/
+├── core/          # models, storage, timer, rates, durations, categories (reports in M3)
+│   ├── models.py      # Pydantic models for every stored shape
+│   ├── storage.py     # the only file I/O: CSV, YAML, JSON, locking, atomic writes
+│   ├── durations.py   # duration parsing and formatting (FR-27)
+│   ├── categories.py  # normalization, ranking, typo guard (FR-43 to FR-48, FR-52)
+│   ├── rates.py       # rate lookup by date and earnings (FR-14, FR-15)
+│   ├── timer.py       # elapsed time and stop-to-entry (FR-1 to FR-3, FR-9)
+│   └── errors.py      # CubitError and DataFileError
+├── cli/           # Typer app; only --version so far, commands land in M2
+└── web/           # Flask app, templates/, static/ (M4)
 tests/
 └── fixtures/
+    └── sample-data/   # a small realistic data folder used by the tests
 design/    # starter theme.css, logo and brand preview (used from Milestone 4)
 ```
 
-## Commands (planned; confirm once pyproject.toml exists)
+## Commands
 
 ```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 pip install -e .
 pytest
 ruff check . && ruff format .
+cubit --version
 cubit --help
-cubit web
 ```
+
+`cubit web` and the other subcommands do not exist yet; see the milestones in
+`REQUIREMENTS.md` section 9.
 
 ## Architecture rules
 
