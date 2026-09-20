@@ -6,7 +6,7 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** milestones 1 (core), 2 (CLI basics) and 3 (reports) are built and tested. `cubit check` and the web app are not built yet. Keep this file up to date as the repo takes shape, especially the Commands section.
+**Status:** milestones 1 to 4 are built and tested: core, the CLI, the reports and the web app. Milestone 5 (`cubit check`, docs, shell completion) is what is left. Keep this file up to date as the repo takes shape, especially the Commands section.
 
 ## Source of truth
 
@@ -42,7 +42,14 @@ src/cubit/
 │   ├── parsing.py     # option strings -> dates, times, durations, money
 │   ├── context.py     # data-folder resolution (FR-26)
 │   └── exit_codes.py
-└── web/           # Flask app, templates/, static/ (M4)
+└── web/           # Flask app
+    ├── app.py         # the factory: config, CSRF hook, error handler
+    ├── security.py    # CSRF tokens (FR-36)
+    ├── forms.py       # request values -> the types core expects
+    ├── filters.py     # Jinja filters, so templates hold no formatting logic
+    ├── views/         # one blueprint per page
+    ├── templates/
+    └── static/        # theme.css, app.css, app.js, the logo, fonts/
 tests/
 └── fixtures/
     └── sample-data/   # a small realistic data folder used by the tests
@@ -64,10 +71,11 @@ cubit start acme-web -c software-coding -m "Landing page"
 cubit stop
 cubit list
 cubit report week
+cubit web
 ```
 
-`cubit check` and `cubit web` do not exist yet; see the milestones in
-`REQUIREMENTS.md` section 9.
+`cubit check` does not exist yet; see the milestones in `REQUIREMENTS.md`
+section 9.
 
 ## Architecture rules
 
@@ -96,8 +104,10 @@ cubit report week
 - Time no rate covers is carried as unrated minutes beside the money, never as zero earnings (FR-15).
 - Dates are `datetime.date` in local time. The timer's elapsed time is computed from timezone-aware timestamps.
 - CLI errors: short message plus hint, non-zero exit code, no traceback.
-- Web: server-rendered, no JS build step, no CDN or external requests, bind to `127.0.0.1` only, CSRF protection on POST.
-- Theme: all colors, fonts and spacing are CSS variables in `web/static/theme.css`. No hard-coded colors in templates or other CSS. Start from `design/theme.css` and use `design/cubit-mark.svg` as logo and favicon. Logo and fonts are bundled locally. Cubit has its own palette (dark default, light variant); see REQUIREMENTS.md 3.8 and 4.5.
+- Web: server-rendered, no JS build step, no CDN or external requests, bind to `127.0.0.1` only.
+- Web: every state-changing route needs a CSRF token, and every form renders `csrf_input()`. There is a test that fails if a route or a form is added without one.
+- Web: views never touch files. Anything they need comes from `core.storage` or `core.service`.
+- Theme: all colors, fonts and spacing are CSS variables in `web/static/theme.css`. No hard-coded colors in templates or other CSS; a test enforces it. Start from `design/theme.css` and use `design/cubit-mark.svg` as logo and favicon. Logo and fonts are bundled locally. Cubit has its own palette (dark default, light variant); see REQUIREMENTS.md 3.8 and 4.5.
 - CLI: the category option is `--category` / `-c` and is documented without `#`, since an unquoted `#` starts a shell comment.
 - CLI: a command's docstring is its `--help` text, so FR-ids go in a comment beneath it, not in the docstring.
 - CLI: every command that can ask something takes `--yes` / `-y`, and nothing is ever asked when stdin is not a terminal.
@@ -106,7 +116,7 @@ cubit report week
 ## Testing
 
 - Every requirement with logic gets tests. Reference the FR-id in the test name or docstring where practical.
-- Must cover: rate lookup by date, budget calculation, ISO week and month/year boundaries, timers crossing midnight and DST, hand-edited CSV parsing, safe concurrent writes, category normalization, suggestion ranking and auto-registration of new categories.
+- Must cover: rate lookup by date, budget calculation, ISO week and month/year boundaries, timers crossing midnight and DST, hand-edited CSV parsing, safe concurrent writes, category normalization, suggestion ranking and auto-registration of new categories, and CSRF on every state-changing route.
 - Run `pytest` and `ruff check .` before saying a task is done.
 
 ## Working style

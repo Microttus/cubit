@@ -4,15 +4,15 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: usable from the command line.** Logging time and reporting on it both work today: `init`, the timer, manual entries, categories, project management and the weekly, monthly, per-project, per-client and per-category summaries. The data-folder check (`cubit check`) and the web app (`cubit web`) are not built yet; they are milestones 4 and 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
+> **Status: usable.** The CLI and the web app both work: `init`, the timer, manual entries, categories, project management, and the weekly, monthly, per-project, per-client and per-category summaries, from either interface. `cubit check` and the last polish are still to come; that is milestone 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
 
 ## Features
 
 - Start/stop timer **or** add time manually after the fact
-- CLI (`cubit`) and local web app (`cubit web`, *planned*) on one shared core
+- CLI (`cubit`) and local web app (`cubit web`) on one shared core
 - Projects with client, hourly-rate history, status (active/archived) and an hour budget
 - Categories per project (e.g. `#software-coding`), remembered and suggested as you log, and totalled across projects
-- Web app with its own IceCube-inspired look: dark by default, light "ice" theme available *(planned)*
+- Web app with its own IceCube-inspired look: dark by default, light "ice" theme available
 - Reports: weekly, monthly, per project (hours vs. budget), per client, per category
 - Plain-text storage: CSV for time entries, YAML for projects. No database
 - Local-first; the data folder is laid out so syncing can be added later
@@ -37,7 +37,7 @@ cubit report week                  # this week, by project and by day
 cubit report month last            # last month, by project, client and week
 cubit report project acme-web      # hours vs. budget, earnings, categories
 
-cubit web                          # planned, milestone 4
+cubit web                          # opens http://127.0.0.1:8000
 ```
 
 ## CLI overview
@@ -55,7 +55,7 @@ cubit web                          # planned, milestone 4
 | `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
 | `cubit report week\|month\|project\|client\|category` | Summaries |
 | `cubit check` | Validate the data folder *(milestone 5)* |
-| `cubit web` | Start the local web app *(milestone 4)* |
+| `cubit web` | Start the local web app |
 
 Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
 `today` and `yesterday`.
@@ -88,6 +88,30 @@ that off with `prompt_for_category: false` in `config.yaml`.
 
 > Write `-c software-coding` without the `#`. In shells like bash and PowerShell an unquoted `#` starts a comment. `-c "#software-coding"` also works.
 
+## Web app
+
+`cubit web` serves the same data as the CLI at `http://127.0.0.1:8000`, on the
+loopback interface only. Four pages: a dashboard with the timer, today's entries
+and this week's total; entries with filters, add, edit and delete; projects with
+rate history and archiving; and reports. A timer started in one interface can be
+seen and stopped in the other.
+
+Pages are rendered on the server. There is no build step, no CDN and no network
+request of any kind, so it works offline. The one script is optional polish: the
+running timer counts up, and the category box follows the project you pick.
+
+Every form that changes something carries a CSRF token, because the loopback
+interface is not a boundary a browser respects — without it, any page you have
+open could post to your local server.
+
+The header has a theme toggle; the choice is written to `config.yaml`, so the
+next session and the CLI agree with it. All colours, fonts and spacing live in
+`src/cubit/web/static/theme.css`, and changing the theme means editing that one
+file.
+
+> Werkzeug prints "This is a development server" on startup. That is expected:
+> cubit is a local single-user tool, so it does not ship a production server.
+
 ## Data
 
 Everything lives in one folder (default `~/cubit-data`, override with `--data-dir` or `CUBIT_DATA_DIR`):
@@ -99,8 +123,10 @@ cubit-data/
 ├── entries/
 │   ├── 2026-08.csv      # one file per month
 │   └── 2026-09.csv
-└── .state/
-    └── timer.json       # the currently running timer (not for syncing)
+└── .state/              # not for syncing: runtime state, not your data
+    ├── timer.json       # the currently running timer
+    ├── cubit.lock       # held while a write is in flight
+    └── secret_key       # signs the web app's session cookie
 ```
 
 Example entry file (`entries/2026-09.csv`):

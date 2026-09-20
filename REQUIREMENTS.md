@@ -86,7 +86,7 @@ Priorities: **Must** (v1 is not done without it), **Should** (v1 if time allows)
 | FR-33 | Must | **Projects page:** create/edit, rate history, archive/unarchive. |
 | FR-34 | Must | **Reports page:** weekly, monthly, per-project and per-client views. |
 | FR-35 | Must | Server-rendered pages, no JS build step, no external network requests (works offline). |
-| FR-36 | Should | CSRF protection on all state-changing requests. Without it, any website open in the browser could post to the local server. |
+| FR-36 | Must | CSRF protection on all state-changing requests. Without it, any website open in the browser could post to the local server. Built with the first POST rather than retrofitted, so no route can be added without it. |
 
 ### 3.6 Data and storage
 
@@ -125,7 +125,7 @@ A category is not a note. A note is free text on a single entry ("Fixed login bu
 
 ### 3.8 Look and feel
 
-Cubit has its own identity: its own logo and palette, inspired by the IceCube Solutions website ([icecubesol.no](https://icecubesol.no), source in the [SpaceIceWeb repo](https://github.com/Microttus/SpaceIceWeb)) so the two feel related. Kept from the site: near-black backgrounds, the cyan accent, JetBrains Sans and Mono, a frosted header with the logo on the left and navigation on the right, 12px rounded cards and pill-shaped chips. The site's looping background video is not used; the app has a static background with a faint accent glow.
+Cubit has its own identity: its own logo and palette, inspired by the IceCube Solutions website ([icecubesol.no](https://icecubesol.no), source in the [SpaceIceWeb repo](https://github.com/Microttus/SpaceIceWeb)) so the two feel related. Kept from the site: near-black backgrounds, the cyan accent, JetBrains Mono, a frosted header with the logo on the left and navigation on the right, 12px rounded cards and pill-shaped chips. The site's looping background video is not used; the app has a static background with a faint accent glow.
 
 Starter files are in `design/`: `cubit-mark.svg` (logo and favicon), `theme.css` (tokens) and `brand-preview.svg` (what it looks like).
 
@@ -133,7 +133,7 @@ Starter files are in `design/`: `cubit-mark.svg` (logo and favicon), `theme.css`
 |---|---|---|
 | FR-56 | Must | The web app uses Cubit's own identity from `design/`: logo, palette and fonts, with the logo on the left and navigation on the right (Dashboard, Entries, Projects, Reports). |
 | FR-57 | Must | All colors, fonts and spacing are CSS variables in one file, `web/static/theme.css`, started from `design/theme.css` (see 4.5). No hard-coded colors anywhere else. Changing the theme means editing that file. |
-| FR-58 | Must | Logo, favicon and fonts are bundled with the app. Nothing is loaded from the internet (see FR-35). Fonts are JetBrains Sans and JetBrains Mono: copy the `.woff2` files from the SpaceIceWeb `fonts/` folder. |
+| FR-58 | Must | Logo, favicon and fonts are bundled with the app. Nothing is loaded from the internet (see FR-35). **JetBrains Mono** is the bundled font: it is under the SIL Open Font License, so it may ship with the app, and it sets navigation, durations, totals, ids and `#categories`. Copy the `.woff2` files into `web/static/fonts/` (see the README there). JetBrains **Sans** is not bundled, because its licence does not clearly allow redistribution; body text falls back to Inter and then the system UI font. |
 | FR-59 | Should | CLI output uses the accent color sparingly and respects `NO_COLOR`. |
 | FR-62 | Should | Dark theme by default, light "ice" theme available. `theme: dark \| light \| auto` in `config.yaml`, plus a toggle in the header. |
 
@@ -146,7 +146,9 @@ cubit-data/
 ├── config.yaml
 ├── projects.yaml
 ├── entries/YYYY-MM.csv
-└── .state/timer.json
+└── .state/
+    ├── timer.json
+    └── secret_key
 ```
 
 ### 4.1 `entries/YYYY-MM.csv`
@@ -213,6 +215,8 @@ Exists only while a timer is running. Kept out of `entries/` and `projects.yaml`
 
 `started_at` is timezone-aware, so elapsed time stays correct across DST changes. Stored entries use local `HH:MM`. `category` is the optional category the timer was started with (FR-1); it is `null` when the timer has none, and can still be changed at stop.
 
+`.state/` also holds `cubit.lock`, the lock file writes are taken under (FR-39), and `secret_key`, which signs the web app's session cookie and therefore its CSRF tokens (FR-36). The key is 64 hex characters, generated on first use with `0600` permissions, and has to survive a restart or a form already open in the browser would stop working. Like `timer.json`, neither belongs to the data itself: they are kept out of `entries/` and `projects.yaml` so they are never synced or committed.
+
 ### 4.5 Theme tokens
 
 Defined in `web/static/theme.css`, started from `design/theme.css`, and used by every template and stylesheet. Cubit's own palette, inspired by the IceCube Solutions site: near-black backgrounds and the site's cyan accent (dark, default), and an "ice" light variant built on the site's pale blue and link blues.
@@ -231,8 +235,8 @@ Defined in `web/static/theme.css`, started from `design/theme.css`, and used by 
 | `--color-success` | `#3ddc97` | `#16855a` | On budget |
 | `--color-warning` | `#ffb84d` | `#9a5b00` | Budget threshold reached |
 | `--color-danger` | `#ff6b6b` | `#c62f3a` | Over budget, errors |
-| `--font-body` | JetBrains Sans | | Text (fallback Inter, system-ui) |
-| `--font-mono` | JetBrains Mono | | Navigation, durations, ids, `#categories` |
+| `--font-body` | Inter, system-ui | | Text (JetBrains Sans is not bundled: see FR-58) |
+| `--font-mono` | JetBrains Mono | | Navigation, durations, totals, ids, `#categories` (bundled) |
 | `--radius-card` / `--radius-pill` | 12px / 999px | | Cards / chips and buttons |
 | `--header-h` | 64px | | Frosted, fixed header |
 
@@ -288,7 +292,7 @@ design/    # starter theme.css, logo and brand preview (copied to web/static in 
 
 ## 8. Open questions
 
-1. **Web framework:** Flask is proposed (small, server-rendered). FastAPI is the alternative.
+1. ~~**Web framework:**~~ **Resolved:** Flask, server-rendered, no JS build step (built in M4).
 2. **Clients:** modelled as a `client` field on each project. Is a separate client record with its own settings ever needed?
 3. **Time granularity:** whole minutes, timer rounds to the nearest minute. Should there be optional rounding (e.g. up to 15 min)?
 4. **Currency:** one global currency in `config.yaml`. Is multi-currency needed?
@@ -296,7 +300,7 @@ design/    # starter theme.css, logo and brand preview (copied to web/static in 
 6. **Default data folder:** `~/cubit-data` (visible, easy to back up). Prefer a hidden or OS-standard location?
 7. **One category per entry:** keeps category totals clean. Several per entry would count the same hours twice in category reports.
 8. **Palette and logo:** proposals, based on the site but Cubit's own (section 4.5 and `design/`). Adjust freely: only `theme.css` and the logo files change.
-9. **JetBrains Sans license:** confirm it may be bundled with the app. JetBrains Mono is open source. The fallback is Inter or the system font.
+9. ~~**JetBrains Sans license:**~~ **Resolved:** only JetBrains Mono is bundled (SIL OFL). JetBrains Sans is not redistributed; body text uses Inter, then the system UI font. See FR-58.
 
 ## 9. Milestones
 
@@ -305,5 +309,5 @@ design/    # starter theme.css, logo and brand preview (copied to web/static in 
 | M1 | Core | Models, storage, duration parsing, rate lookup, category registry and suggestion ranking, tests |
 | M2 | CLI basics | `init`, projects, timer, manual entries with categories, list/edit/delete |
 | M3 | Reports | Core report functions and CLI output (week, month, project, client) |
-| M4 | Web app | Dashboard, entries, projects, reports, theme |
-| M5 | Polish | `cubit check`, budget warnings, CSRF, docs, shell completion |
+| M4 | Web app | Dashboard, entries, projects, reports, theme, CSRF |
+| M5 | Polish | `cubit check`, docs, shell completion |
