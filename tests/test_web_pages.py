@@ -444,20 +444,20 @@ def test_the_theme_comes_from_the_config(web, storage: Storage) -> None:
 
 def test_the_toggle_writes_the_theme_to_the_config(web, storage: Storage) -> None:
     """FR-62: a setting, so the CLI and the next session agree."""
-    web.post("/theme", {"theme": "light"})
+    web.post("/settings/theme", {"theme": "light"})
     assert storage.load_config().theme == "light"
 
-    web.post("/theme", {"theme": "dark"})
+    web.post("/settings/theme", {"theme": "dark"})
     assert storage.load_config().theme == "dark"
 
 
 def test_the_toggle_keeps_the_comments_in_the_config(web, storage: Storage) -> None:
-    web.post("/theme", {"theme": "light"})
+    web.post("/settings/theme", {"theme": "light"})
     assert "# Cubit configuration" in storage.config_path.read_text(encoding="utf-8")
 
 
 def test_an_unknown_theme_is_refused(web, storage: Storage) -> None:
-    response = web.post("/theme", {"theme": "neon"})
+    response = web.post("/settings/theme", {"theme": "neon"})
     assert "Unknown theme" in text_of(response)
     assert storage.load_config().theme == "dark"
 

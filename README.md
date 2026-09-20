@@ -107,9 +107,9 @@ that off with `prompt_for_category: false` in `config.yaml`.
 ## Web app
 
 `cubit web` serves the same data as the CLI at `http://127.0.0.1:8000`, on the
-loopback interface only. Four pages: a dashboard with the timer, today's entries
+loopback interface only. Five pages: a dashboard with the timer, today's entries
 and this week's total; entries with filters, add, edit and delete; projects with
-rate history and archiving; and reports. A timer started in one interface can be
+rate history and archiving; reports; and settings. A timer started in one interface can be
 seen and stopped in the other.
 
 Pages are rendered on the server. There is no build step, no CDN and no network
@@ -120,8 +120,11 @@ Every form that changes something carries a CSRF token, because the loopback
 interface is not a boundary a browser respects — without it, any page you have
 open could post to your local server.
 
-The header has a theme toggle; the choice is written to `config.yaml`, so the
-next session and the CLI agree with it. All colours, fonts and spacing live in
+**Settings** edits the same `config.yaml` you can edit by hand — currency, week
+start, budget warning level, category prompting, theme and the macOS menu bar
+title. Saving writes the whole file at once and only if every value is valid, so
+a rejected change leaves the file untouched, and the comments you have written in
+it survive. The header also keeps a quick theme toggle. All colours, fonts and spacing live in
 `src/cubit/web/static/theme.css`, and changing the theme means editing that one
 file.
 
@@ -234,8 +237,8 @@ projects:
 
 You can edit these files by hand. Cubit validates them on load and tells you which file and row is wrong.
 
-`config.yaml` holds the settings. `currency` defaults to `NOK` and is just a
-label on the money — cubit never converts between currencies — so change it to
+`config.yaml` holds the settings, editable by hand or from the web app's
+settings page. `currency` defaults to `NOK` and is just a label on the money — cubit never converts between currencies — so change it to
 `EUR`, `USD` or anything else and every report follows:
 
 ```yaml

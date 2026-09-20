@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Settings</h1>
+
+  <div class="card">
+    <form class="stack" method="post" action="{{ url_for('settings.save') }}">
+      {{ csrf_input() }}
+
+      <div class="row">
+        <div class="field field-narrow">
+          <label for="currency">Currency</label>
+          <input id="currency" name="currency" value="{{ settings.currency }}"
+                 maxlength="12" required class="mono">
+        </div>
+        <div class="field">
+          <label for="week_starts_on">Week starts on</label>
+          <select id="week_starts_on" name="week_starts_on">
+            {% for day in week_starts %}
+              <option value="{{ day }}" {% if settings.week_starts_on == day %}selected{% endif %}>
+                {{ day | capitalize }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field field-narrow">
+          <label for="budget_warning_percent">Budget warning at</label>
+          <input id="budget_warning_percent" name="budget_warning_percent" type="number"
+                 min="1" max="100" required class="mono"
+                 value="{{ settings.budget_warning_percent }}">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="theme">Theme</label>
+          <select id="theme" name="theme">
+            {% for name in themes %}
+              <option value="{{ name }}" {% if settings.theme == name %}selected{% endif %}>
+                {{ 'Light (ice)' if name == 'light' else name | capitalize }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label for="menubar_title">Menu bar title <span class="muted">(macOS)</span></label>
+          <select id="menubar_title" name="menubar_title">
+            {% for name in menubar_titles %}
+              <option value="{{ name }}" {% if settings.menubar_title == name %}selected{% endif %}>
+                {{ {'none': 'Icon only', 'time': 'Elapsed time', 'project-time': 'Project and time'}[name] }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Logging</label>
+          <label class="muted">
+            <input type="checkbox" name="prompt_for_category" value="1" style="width: auto"
+                   {% if settings.prompt_for_category %}checked{% endif %}>
+            Suggest categories when logging without one
+          </label>
+        </div>
+      </div>
+
+      <div class="row">
+        <p class="muted">These are the settings in <span class="mono">config.yaml</span>.
+          Saving keeps the comments you have written in it.</p>
+        <div class="row-end">
+          <button class="btn btn-primary" type="submit">Save settings</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>This data folder</h2>
+    <table>
+      <tbody>
+        <tr><td>Folder</td><td class="mono">{{ data_dir }}</td></tr>
+        <tr><td>Settings file</td><td class="mono">{{ config_path }}</td></tr>
+      </tbody>
+    </table>
+    <p class="muted">Every setting here can be edited in that file by hand, and cubit
+      validates it on load. Run <span class="mono">cubit check</span> to validate the
+      whole folder.</p>
+  </div>
+{% endblock %}

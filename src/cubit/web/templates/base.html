@@ -19,6 +19,7 @@
       <a href="{{ url_for('entries.index') }}" {% if nav_active == 'entries' %}class="is-active"{% endif %}>Entries</a>
       <a href="{{ url_for('projects.index') }}" {% if nav_active == 'projects' %}class="is-active"{% endif %}>Projects</a>
       <a href="{{ url_for('reports.index') }}" {% if nav_active == 'reports' %}class="is-active"{% endif %}>Reports</a>
+      <a href="{{ url_for('settings.index') }}" {% if nav_active == 'settings' %}class="is-active"{% endif %}>Settings</a>
       <form class="theme-toggle inline-form" method="post" action="{{ url_for('settings.set_theme') }}">
         {{ csrf_input() }}
         <input type="hidden" name="theme" value="{{ 'light' if theme == 'dark' else 'dark' }}">

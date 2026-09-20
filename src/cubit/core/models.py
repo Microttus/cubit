@@ -158,7 +158,7 @@ class Entry(_Model):
 class Config(_Model):
     """Settings from ``config.yaml`` (REQUIREMENTS 4.3)."""
 
-    currency: str = "NOK"
+    currency: str = Field(default="NOK", min_length=1, max_length=12)
     week_starts_on: Literal["monday", "sunday"] = "monday"
     budget_warning_percent: int = Field(default=80, ge=1, le=100)
     prompt_for_category: bool = True

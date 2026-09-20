@@ -88,6 +88,7 @@ Priorities: **Must** (v1 is not done without it), **Should** (v1 if time allows)
 | FR-34 | Must | **Reports page:** weekly, monthly, per-project and per-client views. |
 | FR-35 | Must | Server-rendered pages, no JS build step, no external network requests (works offline). |
 | FR-36 | Must | CSRF protection on all state-changing requests. Without it, any website open in the browser could post to the local server. Built with the first POST rather than retrofitted, so no route can be added without it. |
+| FR-78 | Should | **Settings page:** the settings in `config.yaml` (4.3) edited in a form. Saving writes the whole file at once and only if every value validates, so a rejected change leaves the file as it was. The file stays hand-editable and keeps its comments (FR-37). The page names the folder and the settings file it is editing. |
 
 ### 3.6 Data and storage
 
@@ -132,7 +133,7 @@ Starter files are in `design/`: `cubit-mark.svg` (logo and favicon), `theme.css`
 
 | ID | Pri | Requirement |
 |---|---|---|
-| FR-56 | Must | The web app uses Cubit's own identity from `design/`: logo, palette and fonts, with the logo on the left and navigation on the right (Dashboard, Entries, Projects, Reports). |
+| FR-56 | Must | The web app uses Cubit's own identity from `design/`: logo, palette and fonts, with the logo on the left and navigation on the right (Dashboard, Entries, Projects, Reports, Settings). |
 | FR-57 | Must | All colors, fonts and spacing are CSS variables in one file, `web/static/theme.css`, started from `design/theme.css` (see 4.5). No hard-coded colors anywhere else. Changing the theme means editing that file. |
 | FR-58 | Must | Logo, favicon and fonts are bundled with the app. Nothing is loaded from the internet (see FR-35). **JetBrains Mono** is the bundled font: it is under the SIL Open Font License, so it may ship with the app, and it sets navigation, durations, totals, ids and `#categories`. Copy the `.woff2` files into `web/static/fonts/` (see the README there). JetBrains **Sans** is not bundled, because its licence does not clearly allow redistribution; body text falls back to Inter and then the system UI font. |
 | FR-59 | Should | CLI output uses the accent color sparingly and respects `NO_COLOR`. |
@@ -262,8 +263,11 @@ menubar_title: time           # none | time | project-time (macOS menu bar)
 ```
 
 `currency` is a label on the money, not a conversion: cubit never converts
-between currencies (open question 4). Times are 24-hour everywhere -- stored,
-entered and displayed -- so there is no am/pm to get wrong.
+between currencies (open question 4), and it cannot be blank. Times are 24-hour
+everywhere -- stored, entered and displayed -- so there is no am/pm to get wrong.
+
+The file is meant to be edited by hand, and the web app's settings page (FR-78)
+edits the same six values through a form without disturbing the comments in it.
 
 ### 4.4 `.state/timer.json`
 

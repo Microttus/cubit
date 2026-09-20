@@ -52,7 +52,7 @@ src/cubit/
 │   ├── security.py    # CSRF tokens (FR-36)
 │   ├── forms.py       # request values -> the types core expects
 │   ├── filters.py     # Jinja filters, so templates hold no formatting logic
-│   ├── views/         # one blueprint per page
+│   ├── views/         # one blueprint per page, settings included
 │   ├── templates/
 │   └── static/        # theme.css, app.css, app.js, the logo, fonts/
 └── menubar/       # macOS menu bar app (rumps), optional
@@ -117,6 +117,7 @@ cubit menubar                                       # macOS only
 - Web: server-rendered, no JS build step, no CDN or external requests, bind to `127.0.0.1` only.
 - Web: every state-changing route needs a CSRF token, and every form renders `csrf_input()`. There is a test that fails if a route or a form is added without one.
 - Web: views never touch files. Anything they need comes from `core.storage` or `core.service`.
+- Web: the settings page edits `config.yaml`, which stays a hand-editable file. Build the whole `Config` and validate it before writing, so a rejected value leaves the file as it was, and never write it any way but `storage.save_config`, which keeps the comments.
 - Theme: all colors, fonts and spacing are CSS variables in `web/static/theme.css`. No hard-coded colors in templates or other CSS; a test enforces it. Start from `design/theme.css` and use `design/cubit-mark.svg` as logo and favicon. Logo and fonts are bundled locally. Cubit has its own palette (dark default, light variant); see REQUIREMENTS.md 3.8 and 4.5.
 - CLI: the category option is `--category` / `-c` and is documented without `#`, since an unquoted `#` starts a shell comment.
 - CLI: a command's docstring is its `--help` text, so FR-ids go in a comment beneath it, not in the docstring.

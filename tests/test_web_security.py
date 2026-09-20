@@ -25,7 +25,7 @@ MUTATIONS = [
     ("/projects/acme-web/rate", {"rate": "120"}),
     ("/projects/acme-web/archive", {}),
     ("/projects/acme-web/categories", {"category": "invoicing"}),
-    ("/theme", {"theme": "light"}),
+    ("/settings/theme", {"theme": "light"}),
 ]
 
 

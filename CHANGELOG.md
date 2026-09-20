@@ -25,6 +25,11 @@ breaking change and is listed under **Changed** with what to do about it.
   - Installed as an extra, macOS only: `pipx install "cubit[menubar]"` (FR-75).
 - `/healthz` on the web app, so the menu bar app can tell a cubit server from
   whatever else might be on port 8000 before opening the browser (FR-68).
+- **Settings page** in the web app, editing the six settings in `config.yaml`
+  through a form (FR-78). Saving validates the whole config before writing, so a
+  bad value leaves the file exactly as it was, and the comments in the file
+  survive. The page names the folder and the file it edits, because a settings
+  page should not hide the file behind it.
 
 ### Changed
 
@@ -38,6 +43,10 @@ breaking change and is listed under **Changed** with what to do about it.
   hour (`9:05`) while refusing `1:30 PM` rather than guessing at it.
 - `cubit init` writes `menubar_title` into the starter `config.yaml`, so every
   documented setting is visible to someone editing the file by hand.
+- The theme toggle moved from `POST /theme` to `POST /settings/theme`, now that
+  settings have a page of their own.
+- `currency` cannot be blank: money with no currency reads as a bare number in
+  every report.
 - `config.yaml` accepts `menubar_title`. REQUIREMENTS 4.3 already documented
   the key, but the config model rejected unknown keys, so a config file written
   to the documented shape did not load. Existing files are unaffected: the key

@@ -55,6 +55,17 @@ def clock(values, name: str) -> time | None:
     return parse_clock(text(values, name))
 
 
+def whole(values, name: str, label: str) -> int:
+    """A whole number, for a setting like a percentage."""
+    raw = required(values, name, label)
+    try:
+        return int(raw)
+    except ValueError:
+        raise CubitError(
+            f"Cannot read {raw!r} as a whole number.", hint=f"{label} is a number."
+        ) from None
+
+
 def money(values, name: str, label: str) -> Decimal | None:
     raw = text(values, name)
     if not raw:
