@@ -2,24 +2,23 @@
 
 Cubit bundles its fonts; nothing is loaded from the internet (FR-35, FR-58).
 
-**JetBrains Mono** is the one font cubit uses beyond the system stack: it sets
-navigation, durations, totals, entry ids and `#categories`, so columns of
-numbers line up. It is licensed under the SIL Open Font License, so it can ship
-with the app.
+## What is here
 
-Put these two files here:
+- `JetBrainsMono-Regular.woff2` — the one font cubit ships. It sets navigation,
+  durations, totals, entry ids and `#categories`, so columns of numbers line up.
+  This is the same file the [IceCube Solutions site](https://icecubesol.no) uses
+  (from the [SpaceIceWeb repo](https://github.com/Microttus/SpaceIceWeb)), so the
+  two look related.
+- `OFL.txt` — the SIL Open Font License, Version 1.1, which JetBrains Mono is
+  released under and which permits bundling it here.
 
-- `JetBrainsMono-Regular.woff2`
-- `JetBrainsMono-Bold.woff2`
+## What is deliberately not here
 
-Copy them from the `fonts/` folder of the
-[SpaceIceWeb repo](https://github.com/Microttus/SpaceIceWeb), or from a
-[JetBrains Mono release](https://github.com/JetBrains/JetBrainsMono/releases).
+**A bold weight.** Only the regular is bundled, so a browser synthesizes bold
+from it. Cubit's interface uses mono for labels and figures rather than for
+emphasis, so the difference barely shows. To use the real thing, drop
+`JetBrainsMono-Bold.woff2` in beside the regular and add a second `@font-face`
+to `../theme.css` with `font-weight: 700`.
 
-Until they are here the app falls back to the system monospace font
-(`ui-monospace`, SF Mono, Menlo, Consolas), so everything still works and lines
-up — it just looks less like cubit.
-
-JetBrains **Sans** is deliberately not bundled: its licence does not clearly
-allow redistribution, so body text uses Inter if the machine has it and the
-system UI font otherwise.
+**JetBrains Sans.** Its licence does not clearly allow redistribution, so body
+text falls back to Inter if the machine has it and the system UI font otherwise.

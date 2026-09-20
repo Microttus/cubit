@@ -3,20 +3,15 @@
    Cubit's own palette, inspired by the IceCube Solutions site (icecubesol.no).
    Dark is the default; the light "ice" variant uses the same tokens.
    Do not hard-code colors anywhere else. Use these variables.
-   Started from design/theme.css. Fonts: JetBrains Mono is bundled in
-   fonts/; see fonts/README.md. The body font uses the system stack.
+   Started from design/theme.css. JetBrains Mono is bundled in fonts/, the
+   same file the IceCube Solutions site uses. The body font uses the system
+   stack; see fonts/README.md.
    ========================================================================== */
 
 @font-face {
   font-family: "JetBrains Mono";
   src: url("fonts/JetBrainsMono-Regular.woff2") format("woff2");
   font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  src: url("fonts/JetBrainsMono-Bold.woff2") format("woff2");
-  font-weight: 700;
   font-display: swap;
 }
 

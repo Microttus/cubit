@@ -124,3 +124,18 @@ def test_the_bundled_font_is_the_open_source_one() -> None:
     assert "JetBrainsMono" in theme
     assert "JetBrainsSans" not in theme
     assert (STATIC / "fonts" / "README.md").exists()
+
+
+def test_the_font_is_actually_bundled() -> None:
+    """FR-58: the app must not need the network to look right."""
+    font = STATIC / "fonts" / "JetBrainsMono-Regular.woff2"
+    assert font.exists(), "the bundled font is missing"
+    assert font.read_bytes()[:4] == b"wOF2", "that is not a woff2 file"
+    assert (STATIC / "fonts" / "OFL.txt").exists(), "a bundled font ships its licence"
+
+
+def test_every_font_the_theme_asks_for_is_present() -> None:
+    """A @font-face pointing at a missing file is a 404 on every page load."""
+    theme = (STATIC / "theme.css").read_text(encoding="utf-8")
+    for name in re.findall(r'url\("fonts/([^"]+)"\)', theme):
+        assert (STATIC / "fonts" / name).exists(), name
