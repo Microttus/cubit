@@ -113,11 +113,18 @@ def test_rate_from_a_yaml_float_is_exact() -> None:
 
 def test_config_defaults_match_the_documented_ones() -> None:
     config = Config()
-    assert config.currency == "EUR"
+    assert config.currency == "NOK"  # cubit is built for a Norwegian company
     assert config.week_starts_on == "monday"
     assert config.budget_warning_percent == 80
     assert config.prompt_for_category is True
     assert config.theme == "dark"
+    assert config.menubar_title == "time"
+
+
+def test_the_currency_is_a_setting_not_a_fixture() -> None:
+    """The default suits IceCube Solutions; anyone else changes one line."""
+    assert Config(currency="EUR").currency == "EUR"
+    assert Config(currency="USD").currency == "USD"
 
 
 def test_config_rejects_an_unknown_theme() -> None:

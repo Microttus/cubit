@@ -61,11 +61,12 @@ LOCK_TIMEOUT = 10.0
 
 _CONFIG_TEMPLATE = """\
 # Cubit configuration. Edit by hand; comments are kept.
-currency: EUR
+currency: NOK                 # any code you like: NOK, EUR, USD, ...
 week_starts_on: monday
 budget_warning_percent: 80
 prompt_for_category: true
-theme: dark
+theme: dark                   # dark | light | auto
+menubar_title: time           # none | time | project-time (macOS menu bar)
 """
 
 _PROJECTS_TEMPLATE = """\
