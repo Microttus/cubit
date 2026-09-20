@@ -475,3 +475,71 @@ def test_the_active_page_is_marked_in_the_navigation(web) -> None:
     html = text_of(web.get("/projects/"))
     active = [line for line in html.splitlines() if "is-active" in line]
     assert any("Projects" in line for line in active)
+
+
+# ------------------------------------------------------------------ export
+
+
+def test_the_reports_page_offers_both_downloads(web) -> None:
+    """FR-23."""
+    html = text_of(web.get("/reports/?view=month"))
+    assert "/reports/export?" in html
+    assert "format=csv" in html
+    assert "format=markdown" in html
+
+
+def test_a_download_carries_the_filters_of_the_page(web) -> None:
+    """The link keeps the query string, so the file matches what is on screen."""
+    html = text_of(web.get("/reports/?view=month&from=2026-09-01&to=2026-09-30"))
+    link = html.split('href="')[1:]
+    export = next(part for part in link if part.startswith("/reports/export"))
+    assert "from=2026-09-01" in export
+    assert "to=2026-09-30" in export
+
+
+def test_downloading_a_month_as_csv(web) -> None:
+    response = web.get("/reports/export?view=month&from=2026-09-01&to=2026-09-30&format=csv")
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    assert "attachment" in response.headers["Content-Disposition"]
+    assert ".csv" in response.headers["Content-Disposition"]
+
+    body = text_of(response)
+    assert body.startswith("Custom range")
+    assert "Acme website,2h55m" in body
+
+
+def test_downloading_a_project_as_markdown(web) -> None:
+    response = web.get("/reports/export?view=project&project=acme-web&format=markdown")
+
+    assert response.mimetype == "text/markdown"
+    assert "cubit-project-acme-website-acme-web.md" in response.headers["Content-Disposition"]
+    body = text_of(response)
+    assert body.startswith("# Acme website (acme-web)")
+    assert "| Budget |" in body
+
+
+def test_downloading_a_client_and_a_category(web) -> None:
+    client = text_of(web.get("/reports/export?view=client&client=Acme+Corp&format=markdown"))
+    assert client.startswith("# Acme Corp")
+
+    category = text_of(web.get("/reports/export?view=category&category=software-coding&format=csv"))
+    assert "software-coding" in category
+
+
+def test_an_unknown_download_format_is_refused(web) -> None:
+    response = web.raw.get("/reports/export?view=month&format=pdf")
+    assert response.status_code == 400
+    assert "csv, markdown" in text_of(response)
+
+
+def test_downloading_a_category_nobody_picked(web) -> None:
+    response = web.raw.get("/reports/export?view=category&format=csv")
+    assert response.status_code == 400
+    assert "nothing to export" in text_of(response)
+
+
+def test_a_download_needs_no_token(web) -> None:
+    """It is a GET: reading is never blocked by the CSRF guard."""
+    assert web.raw.get("/reports/export?view=week&format=csv").status_code == 200
