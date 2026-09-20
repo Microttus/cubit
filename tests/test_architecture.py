@@ -139,3 +139,76 @@ def test_every_font_the_theme_asks_for_is_present() -> None:
     theme = (STATIC / "theme.css").read_text(encoding="utf-8")
     for name in re.findall(r'url\("fonts/([^"]+)"\)', theme):
         assert (STATIC / "fonts" / name).exists(), name
+
+
+MENUBAR = Path(__file__).resolve().parents[1] / "src" / "cubit" / "menubar"
+
+
+def test_core_does_not_import_rumps() -> None:
+    """AGENT.md: the core stays cross-platform (REQUIREMENTS section 6)."""
+    for path in CORE.glob("*.py"):
+        assert "rumps" not in _imported_modules(path), path.name
+
+
+def test_only_the_rumps_layer_imports_rumps() -> None:
+    """FR-71: the menu contents must be testable without macOS."""
+    offenders = [
+        path.name
+        for path in MENUBAR.rglob("*.py")
+        if path.name != "app.py" and "rumps" in _imported_modules(path)
+    ]
+    assert offenders == []
+
+
+def test_the_menu_model_is_pure() -> None:
+    """It reads through core.storage and writes nothing at all."""
+    source = (MENUBAR / "model.py").read_text(encoding="utf-8")
+    for forbidden in ["open(", "write_text(", "read_text(", "subprocess"]:
+        assert forbidden not in source, forbidden
+
+
+def test_the_menubar_holds_no_business_logic() -> None:
+    """FR-71: it calls core; it does not reimplement it."""
+    for path in MENUBAR.rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        assert "save_month" not in source
+        assert "write_timer" not in source
+        assert "save_projects" not in source
+
+
+def test_the_menu_bar_icons_are_bundled() -> None:
+    """FR-72: template images, 64x64, shipped with the package."""
+    import struct
+
+    assets = MENUBAR / "assets"
+    for name in ["cubit-menubarTemplate.png", "cubit-menubar-runningTemplate.png"]:
+        icon = assets / name
+        assert icon.exists(), name
+
+        data = icon.read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", f"{name} is not a PNG"
+        width, height = struct.unpack(">II", data[16:24])
+        assert (width, height) == (64, 64), f"{name} is {width}x{height}"
+        # Colour type 6 is RGBA: a template image needs its alpha channel,
+        # because that is what macOS recolours for a dark menu bar.
+        assert data[25] == 6, f"{name} has no alpha channel"
+
+
+def test_the_icons_the_app_asks_for_are_the_ones_that_are_there() -> None:
+    """A missing icon means an invisible menu bar item."""
+    source = (MENUBAR / "app.py").read_text(encoding="utf-8")
+    for name in ["cubit-menubarTemplate.png", "cubit-menubar-runningTemplate.png"]:
+        assert name in source
+        assert (MENUBAR / "assets" / name).exists()
+
+
+def test_the_icon_sources_are_kept_in_design() -> None:
+    """FR-72: the SVG sources live in design/menubar/ beside the PNGs."""
+    design = Path(__file__).resolve().parents[1] / "design" / "menubar"
+    for name in [
+        "cubit-menubar.svg",
+        "cubit-menubar-running.svg",
+        "cubit-menubarTemplate.png",
+        "cubit-menubar-runningTemplate.png",
+    ]:
+        assert (design / name).exists(), name

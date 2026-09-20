@@ -88,10 +88,10 @@ class CubitMenuBar:
         self.app.template = True
         self._hide_from_dock()
 
-        # rumps calls this when the user clicks the icon, which is the moment
-        # the menu has to be right (FR-70).
-        self.app.menu.callback = self._menu_opened
-        rumps.Timer(self._tick, REFRESH_SECONDS).start()
+        self._timer = rumps.Timer(self._tick, REFRESH_SECONDS)
+        self._timer.start()
+        self._delegate = None
+        self._watch_menu_opening()
 
     # ------------------------------------------------------------- running
 
@@ -117,6 +117,33 @@ class CubitMenuBar:
     @guarded
     def _menu_opened(self, _sender: Any = None) -> None:
         self.refresh()
+
+    def _watch_menu_opening(self) -> None:
+        """Refresh the moment the menu is clicked, not up to 30s later (FR-70).
+
+        rumps has no hook for this, so the NSMenu gets a delegate. It reaches
+        into rumps to find that menu, so it is wrapped: if a future rumps moves
+        it, the app still works and the timer still refreshes, just not
+        instantly.
+        """
+        try:
+            from Foundation import NSObject
+
+            menu = getattr(self.app.menu, "_menu", None)
+            if menu is None:  # pragma: no cover - only on a changed rumps
+                log.debug("could not find the NSMenu to watch")
+                return
+
+            outer = self
+
+            class _MenuWatcher(NSObject):
+                def menuWillOpen_(self, _menu: Any) -> None:  # noqa: N802
+                    outer._menu_opened()
+
+            self._delegate = _MenuWatcher.alloc().init()
+            menu.setDelegate_(self._delegate)
+        except Exception:  # pragma: no cover - not macOS, or a changed rumps
+            log.debug("could not watch the menu opening", exc_info=True)
 
     def refresh(self) -> None:
         """Re-read the folder and redraw the menu.
