@@ -163,8 +163,9 @@ class Config(_Model):
     budget_warning_percent: int = Field(default=80, ge=1, le=100)
     prompt_for_category: bool = True
     theme: Literal["dark", "light", "auto"] = "dark"
+    menubar_title: Literal["none", "time", "project-time"] = "time"
 
-    @field_validator("week_starts_on", "theme", mode="before")
+    @field_validator("week_starts_on", "theme", "menubar_title", mode="before")
     @classmethod
     def _lowercase(cls, value: object) -> object:
         return value.lower() if isinstance(value, str) else value

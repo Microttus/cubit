@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from cubit.core import Config, DataFileError, Storage, TimerState
+from cubit.core import Config, CubitError, DataFileError, Storage, TimerState
 from cubit.core.storage import DATA_DIR_ENV_VAR, DEFAULT_DATA_DIR, resolve_data_dir
 
 UTC_PLUS_2 = timezone(timedelta(hours=2))
@@ -141,3 +141,57 @@ def test_a_naive_timer_timestamp_is_refused(empty_storage: Storage) -> None:
     )
     with pytest.raises(DataFileError, match="UTC offset"):
         empty_storage.read_timer()
+
+
+def test_menubar_title_is_a_setting(storage: Storage) -> None:
+    """REQUIREMENTS 4.3: none | time | project-time, default time (FR-64)."""
+    assert storage.load_config().menubar_title == "time"
+
+    storage.config_path.write_text("menubar_title: project-time\n", encoding="utf-8")
+    assert storage.load_config().menubar_title == "project-time"
+
+
+def test_an_unknown_menubar_title_is_refused(storage: Storage) -> None:
+    storage.config_path.write_text("menubar_title: flashing\n", encoding="utf-8")
+    with pytest.raises(DataFileError, match="menubar_title"):
+        storage.load_config()
+
+
+def test_a_config_written_to_the_documented_shape_loads(storage: Storage) -> None:
+    """Every key REQUIREMENTS 4.3 shows must be accepted, not just tolerated."""
+    storage.config_path.write_text(
+        "currency: NOK\n"
+        "week_starts_on: monday\n"
+        "budget_warning_percent: 80\n"
+        "prompt_for_category: true\n"
+        "theme: dark\n"
+        "menubar_title: time\n",
+        encoding="utf-8",
+    )
+    config = storage.load_config()
+    assert (config.currency, config.theme, config.menubar_title) == ("NOK", "dark", "time")
+
+
+def test_a_write_that_waits_too_long_is_an_ordinary_error(tmp_path: Path) -> None:
+    """A menu bar app must not freeze on a lock another process is holding."""
+    store = Storage(tmp_path / "data")
+    store.init()
+    blocker = Storage(tmp_path / "data")
+    impatient = Storage(tmp_path / "data", lock_timeout=0.1)
+
+    with blocker.lock(), pytest.raises(CubitError) as caught, impatient.lock():
+        pass
+
+    assert "busy" in caught.value.message
+    assert caught.value.hint
+
+
+def test_the_lock_is_released_after_a_failure(tmp_path: Path) -> None:
+    store = Storage(tmp_path / "data")
+    store.init()
+
+    with pytest.raises(ValueError), store.lock():
+        raise ValueError("boom")
+
+    with store.lock():  # still acquirable
+        pass

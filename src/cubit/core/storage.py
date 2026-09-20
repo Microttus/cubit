@@ -28,13 +28,14 @@ from pathlib import Path
 from typing import Any
 
 from filelock import FileLock
+from filelock import Timeout as LockTimeout
 from pydantic import ValidationError
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap, CommentedSeq
 from ruamel.yaml.error import YAMLError
 
 from cubit.core.categories import normalize_category
-from cubit.core.errors import DataFileError, ProjectError
+from cubit.core.errors import CubitError, DataFileError, ProjectError
 from cubit.core.models import Config, Entry, Project, TimerState
 
 #: Where the data folder lives when nothing else says otherwise (FR-26).
@@ -105,10 +106,16 @@ def _represent_decimal(representer: Any, value: Decimal) -> Any:
 class Storage:
     """Read and write one cubit data folder."""
 
-    def __init__(self, data_dir: str | os.PathLike[str]) -> None:
+    def __init__(
+        self,
+        data_dir: str | os.PathLike[str],
+        *,
+        lock_timeout: float = LOCK_TIMEOUT,
+    ) -> None:
         self.data_dir = Path(data_dir).expanduser()
+        self.lock_timeout = lock_timeout
         self._yaml = _yaml()
-        self._lock = FileLock(str(self.lock_path), timeout=LOCK_TIMEOUT)
+        self._lock = FileLock(str(self.lock_path), timeout=lock_timeout)
 
     # ------------------------------------------------------------------ paths
 
@@ -168,10 +175,23 @@ class Storage:
 
     @contextmanager
     def lock(self) -> Iterator[None]:
-        """Hold the data folder lock (FR-39). Reentrant within one Storage."""
+        """Hold the data folder lock (FR-39). Reentrant within one Storage.
+
+        Waiting too long is reported as an ordinary cubit error, so a caller
+        that already handles those does not have to know about the lock.
+        """
         self.state_dir.mkdir(parents=True, exist_ok=True)
-        with self._lock:
+        try:
+            self._lock.acquire()
+        except LockTimeout:
+            raise CubitError(
+                "The data folder is busy: another cubit is writing to it.",
+                hint="Wait a moment and try again.",
+            ) from None
+        try:
             yield
+        finally:
+            self._lock.release()
 
     def secret_key(self) -> bytes:
         """The key that signs the web app's session cookie.
