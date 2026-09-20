@@ -34,3 +34,7 @@ def main(
     ),
 ) -> None:
     """Cubit command-line interface."""
+
+
+if __name__ == "__main__":  # pragma: no cover - exercised as a subprocess
+    app()

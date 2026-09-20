@@ -1,0 +1,6 @@
+# Cubit configuration. Edit by hand; comments are kept.
+currency: EUR
+week_starts_on: monday
+budget_warning_percent: 80
+prompt_for_category: true
+theme: dark

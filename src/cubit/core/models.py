@@ -128,6 +128,16 @@ class Entry(_Model):
             raise ValueError(f"entry id {value!r} must be six hex characters")
         return value
 
+    @field_validator("project_id")
+    @classmethod
+    def _valid_project_id(cls, value: str) -> str:
+        if not SLUG_PATTERN.match(value):
+            raise ValueError(
+                f"project_id {value!r} must be a lowercase slug, "
+                "using only letters, digits and hyphens"
+            )
+        return value
+
     @field_validator("category", mode="before")
     @classmethod
     def _normalized_category(cls, value: object) -> object:

@@ -1,0 +1,34 @@
+# Cubit projects. Edit by hand; comments are kept.
+# Entries reference projects by id, so an id never changes.
+projects:
+  - id: acme-web
+    name: Acme website
+    client: Acme Corp
+    status: active
+    categories:               # registered sub-categories, shown as #name
+      - software-coding
+      - project-management
+      - testing
+    budget_hours: 120
+    rates:                    # raised after the summer
+      - valid_from: 2026-01-01
+        rate: 95
+      - valid_from: 2026-07-01
+        rate: 105
+
+  - id: internal
+    name: Internal work
+    client: IceCube Solutions
+    status: active
+    categories:
+      - admin
+    rates: []                 # unpaid: reports flag this time as unrated
+
+  - id: old-site
+    name: Old brochure site
+    client: Acme Corp
+    status: archived          # kept for history only
+    categories: []
+    rates:
+      - valid_from: 2025-02-01
+        rate: 80.50

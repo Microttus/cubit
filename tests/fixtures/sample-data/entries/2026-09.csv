@@ -1,0 +1,5 @@
+id,date,start,end,duration_minutes,project_id,category,note
+b71c02,2026-09-18,,,45,internal,,Invoicing and admin
+a3f9c1,2026-09-18,09:05,10:35,90,acme-web,software-coding,Landing page layout
+c48d7e,2026-09-19,13:00,13:40,40,acme-web,project-management,"Sprint planning call, with Acme"
+d90a11,2026-09-19,23:40,00:25,45,acme-web,software-coding,Hotfix past midnight

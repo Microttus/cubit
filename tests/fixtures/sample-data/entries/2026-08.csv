@@ -1,0 +1,3 @@
+id,date,start,end,duration_minutes,project_id,category,note
+4d5e6f,2026-08-31,,,30,internal,admin,Bookkeeping
+9a1b2c,2026-08-31,08:00,09:30,90,acme-web,software-coding,Cache layer

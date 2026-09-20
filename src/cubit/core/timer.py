@@ -28,18 +28,28 @@ def elapsed_minutes(state: TimerState, now: datetime | None = None) -> int:
     Both sides are timezone-aware, so an hour spent across a DST change counts
     as the hour it really was.
     """
-    moment = now or now_local()
-    if moment.tzinfo is None or moment.utcoffset() is None:
-        raise ValueError("now must be timezone-aware")
-    seconds = Decimal((moment - state.started_at).total_seconds())
+    seconds = Decimal(_real_seconds(state, now))
     minutes = int((seconds / 60).to_integral_value(rounding=ROUND_HALF_UP))
     return max(minutes, MIN_TIMER_MINUTES)
 
 
 def elapsed_seconds(state: TimerState, now: datetime | None = None) -> int:
     """Whole seconds the timer has been running, for a live display (FR-3)."""
+    return int(_real_seconds(state, now))
+
+
+def _real_seconds(state: TimerState, now: datetime | None) -> float:
+    """Seconds of real time between the start and ``now``.
+
+    Both sides are converted to UTC first. Subtracting two datetimes that carry
+    the same named zone gives the difference on the wall clock, which is an
+    hour short across a DST change; going through UTC gives the time that
+    actually passed.
+    """
     moment = now or now_local()
-    return int((moment - state.started_at).total_seconds())
+    if moment.tzinfo is None or moment.utcoffset() is None:
+        raise ValueError("now must be timezone-aware")
+    return (moment.astimezone(UTC) - state.started_at.astimezone(UTC)).total_seconds()
 
 
 def entry_from_timer(
@@ -57,7 +67,7 @@ def entry_from_timer(
     began. ``note`` and ``category`` override what the timer was started with.
     """
     ended = (stopped_at or now_local()).astimezone()
-    if ended < state.started_at:
+    if _real_seconds(state, stopped_at or ended) < 0:
         raise ValueError("stop time is before the timer started")
 
     started_local = state.started_at.astimezone()
@@ -66,7 +76,7 @@ def entry_from_timer(
         date=started_local.date(),
         start=time(started_local.hour, started_local.minute),
         end=time(ended.hour, ended.minute),
-        duration_minutes=elapsed_minutes(state, ended),
+        duration_minutes=elapsed_minutes(state, stopped_at or ended),
         project_id=state.project_id,
         category=state.category if category is None else category,
         note=state.note if note is None else note,
