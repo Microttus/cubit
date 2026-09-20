@@ -6,7 +6,7 @@ Instructions for AI coding agents working on Cubit. Read this file first, then [
 
 Cubit is a time-logging tool for a one-person company (IceCube Solutions). It has a CLI and a local web app on one shared core, and stores data as plain text: CSV for entries, YAML for projects and config.
 
-**Status:** milestone 1 (core) is built and tested. The CLI is only an entry point with `--version`; the web app is an empty package. Keep this file up to date as the repo takes shape, especially the Commands section.
+**Status:** milestones 1 (core) and 2 (CLI basics) are built and tested. Logging time from the command line works; reports, `cubit check` and the web app are not built yet. Keep this file up to date as the repo takes shape, especially the Commands section.
 
 ## Source of truth
 
@@ -25,12 +25,21 @@ src/cubit/
 ├── core/          # models, storage, timer, rates, durations, categories (reports in M3)
 │   ├── models.py      # Pydantic models for every stored shape
 │   ├── storage.py     # the only file I/O: CSV, YAML, JSON, locking, atomic writes
+│   ├── service.py     # the operations behind the commands, shared by CLI and web
 │   ├── durations.py   # duration parsing and formatting (FR-27)
 │   ├── categories.py  # normalization, ranking, typo guard (FR-43 to FR-48, FR-52)
 │   ├── rates.py       # rate lookup by date and earnings (FR-14, FR-15)
 │   ├── timer.py       # elapsed time and stop-to-entry (FR-1 to FR-3, FR-9)
 │   └── errors.py      # CubitError and DataFileError
-├── cli/           # Typer app; only --version so far, commands land in M2
+├── cli/           # Typer app
+│   ├── main.py        # app, global options, CubitError -> message + hint + exit 1
+│   ├── entries.py     # start, stop, status, cancel, add, list, edit, rm
+│   ├── projects.py    # project add|list|show|edit|rate|archive|unarchive|rm|category
+│   ├── prompts.py     # category confirmation and suggestions (FR-45, FR-52, FR-53)
+│   ├── output.py      # aligned tables, totals, NO_COLOR (FR-28, FR-59)
+│   ├── parsing.py     # option strings -> dates, times, durations, money
+│   ├── context.py     # data-folder resolution (FR-26)
+│   └── exit_codes.py
 └── web/           # Flask app, templates/, static/ (M4)
 tests/
 └── fixtures/
@@ -46,16 +55,20 @@ pip install -r requirements-dev.txt
 pip install -e .
 pytest
 ruff check . && ruff format .
-cubit --version
 cubit --help
+cubit init
+cubit project add acme-web --name "Acme website" --client "Acme Corp" --rate 95
+cubit start acme-web -c software-coding -m "Landing page"
+cubit stop
+cubit list
 ```
 
-`cubit web` and the other subcommands do not exist yet; see the milestones in
-`REQUIREMENTS.md` section 9.
+`cubit report`, `cubit check` and `cubit web` do not exist yet; see the
+milestones in `REQUIREMENTS.md` section 9.
 
 ## Architecture rules
 
-1. Business logic lives only in `cubit.core`. CLI and web are thin: parse input, call core, format output.
+1. Business logic lives only in `cubit.core`. CLI and web are thin: parse input, call core, format output. An operation that takes more than one storage call belongs in `core.service`, not in a command.
 2. `core` must not import Typer or Flask.
 3. All reads and writes of data files go through `core.storage`. No direct `open()` on data files elsewhere.
 4. Writes are atomic (temp file + `os.replace`) and held under a file lock, because CLI and web may run at the same time.
@@ -82,6 +95,8 @@ cubit --help
 - Web: server-rendered, no JS build step, no CDN or external requests, bind to `127.0.0.1` only, CSRF protection on POST.
 - Theme: all colors, fonts and spacing are CSS variables in `web/static/theme.css`. No hard-coded colors in templates or other CSS. Start from `design/theme.css` and use `design/cubit-mark.svg` as logo and favicon. Logo and fonts are bundled locally. Cubit has its own palette (dark default, light variant); see REQUIREMENTS.md 3.8 and 4.5.
 - CLI: the category option is `--category` / `-c` and is documented without `#`, since an unquoted `#` starts a shell comment.
+- CLI: a command's docstring is its `--help` text, so FR-ids go in a comment beneath it, not in the docstring.
+- CLI: every command that can ask something takes `--yes` / `-y`, and nothing is ever asked when stdin is not a terminal.
 - Keep dependencies minimal. Ask before adding one.
 
 ## Testing

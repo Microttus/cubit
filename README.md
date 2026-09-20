@@ -4,20 +4,20 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: early.** The core is built and tested -- models, plain-text storage with atomic locked writes, duration parsing, rate history and categories. The CLI is still only `cubit --version`, and the web app is not started. Everything marked *(planned)* below describes the intended behaviour, not what runs today. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
+> **Status: usable from the command line.** Logging time works today: `init`, the timer, manual entries, categories and project management. Reports (`cubit report`), the data-folder check (`cubit check`) and the web app (`cubit web`) are not built yet; they are milestones 3 to 5. See [REQUIREMENTS.md](REQUIREMENTS.md) for the full specification and the milestones.
 
-## Features (planned)
+## Features
 
 - Start/stop timer **or** add time manually after the fact
-- CLI (`cubit`) and local web app (`cubit web`) on one shared core
+- CLI (`cubit`) and local web app (`cubit web`, *planned*) on one shared core
 - Projects with client, hourly-rate history, status (active/archived) and an hour budget
 - Categories per project (e.g. `#software-coding`), remembered and suggested as you log, and totalled across projects
-- Web app with its own IceCube-inspired look: dark by default, light "ice" theme available
-- Reports: weekly, monthly, per project (hours vs. budget), per client
+- Web app with its own IceCube-inspired look: dark by default, light "ice" theme available *(planned)*
+- Reports: weekly, monthly, per project (hours vs. budget), per client *(planned)*
 - Plain-text storage: CSV for time entries, YAML for projects. No database
 - Local-first; the data folder is laid out so syncing can be added later
 
-## Quick start (planned)
+## Quick start
 
 ```bash
 python -m venv .venv
@@ -30,31 +30,45 @@ cubit project add acme-web --name "Acme website" --client "Acme Corp" --rate 95
 cubit start acme-web -c software-coding -m "Landing page layout"
 cubit stop
 cubit add acme-web 1h30m -c project-management --date 2026-09-18 -m "Client call"
-cubit report week
-cubit web                          # opens http://127.0.0.1:8000
+cubit list
+cubit project show acme-web
+
+cubit report week                  # planned, milestone 3
+cubit web                          # planned, milestone 4
 ```
 
-## CLI overview (planned)
+## CLI overview
 
 | Command | Purpose |
 |---|---|
 | `cubit init` | Create the data folder and config |
 | `cubit start <project> [-c category] [-m note]` | Start the timer |
-| `cubit stop [-m note]` | Stop the timer and save an entry |
+| `cubit stop [-c category] [-m note]` | Stop the timer and save an entry |
 | `cubit status` | Show the running timer |
+| `cubit cancel` | Drop the running timer without logging |
 | `cubit add <project> <duration> [-c category] [--date D] [-m note]` | Add an entry manually |
 | `cubit list [filters]` | List entries |
 | `cubit edit <id>` / `cubit rm <id>` | Change or delete an entry |
-| `cubit project add\|list\|show\|edit\|archive\|rate\|category` | Manage projects, rates and categories |
-| `cubit report week\|month\|project\|client\|category` | Summaries |
-| `cubit check` | Validate the data folder |
-| `cubit web` | Start the local web app |
+| `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
+| `cubit report week\|month\|project\|client\|category` | Summaries *(milestone 3)* |
+| `cubit check` | Validate the data folder *(milestone 5)* |
+| `cubit web` | Start the local web app *(milestone 4)* |
 
-Durations accept `90m`, `1h30m`, `1.5h` and `1:30`.
+Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
+`today` and `yesterday`.
+
+`cubit list` shows the current month by default; `--all` shows everything, and
+`--from` / `--to` / `--project` / `--client` / `--category` narrow it down.
+Every command takes `--data-dir`, and `--yes` skips the prompts for scripts.
 
 ### Categories
 
 Each project has its own sub-categories, such as `#project-management` or `#software-coding`. Add one with `-c` when you log time. Cubit registers new categories on that project and suggests the ones you've used before, most recent first. The same name can be used in several projects, so you can also see all `#project-management` time across everything.
+
+When you use a category the project has not seen before, cubit asks once
+before registering it, and offers the closest existing name if it looks like a
+typo. Leave `-c` off and it lists the project's categories to pick from; turn
+that off with `prompt_for_category: false` in `config.yaml`.
 
 > Write `-c software-coding` without the `#`. In shells like bash and PowerShell an unquoted `#` starts a comment. `-c "#software-coding"` also works.
 
