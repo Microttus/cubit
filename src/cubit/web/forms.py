@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import date, time
 from decimal import Decimal, InvalidOperation
 
-from cubit.core import CubitError, parse_duration
+from cubit.core import CubitError, parse_clock, parse_duration
 
 
 def text(values, name: str, default: str = "") -> str:
@@ -51,16 +51,8 @@ def day(values, name: str, default: date | None = None) -> date | None:
 
 
 def clock(values, name: str) -> time | None:
-    raw = text(values, name)
-    if not raw:
-        return None
-    try:
-        parsed = time.fromisoformat(raw)
-    except ValueError:
-        raise CubitError(
-            f"Cannot read {raw!r} as a time.", hint="Use HH:MM, for example 09:05."
-        ) from None
-    return time(parsed.hour, parsed.minute)
+    """A time of day on a 24-hour clock, the same way the CLI reads one."""
+    return parse_clock(text(values, name))
 
 
 def money(values, name: str, label: str) -> Decimal | None:

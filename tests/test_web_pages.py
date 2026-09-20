@@ -543,3 +543,70 @@ def test_downloading_a_category_nobody_picked(web) -> None:
 def test_a_download_needs_no_token(web) -> None:
     """It is a GET: reading is never blocked by the CSRF guard."""
     assert web.raw.get("/reports/export?view=week&format=csv").status_code == 200
+
+
+# ------------------------------------------------------ 24-hour times
+
+
+def test_the_start_field_is_a_24_hour_text_box(web) -> None:
+    """A browser draws <input type="time"> in its own locale, am/pm and all."""
+    html = text_of(web.get("/entries/new"))
+    field = next(line for line in html.splitlines() if 'id="start"' in line)
+
+    assert 'type="time"' not in field
+    assert 'placeholder="09:05"' in html
+    assert "24-hour" in html
+
+
+def test_an_afternoon_time_round_trips(web, storage: Storage) -> None:
+    """13:00 stays 13:00, and the end is worked out from it."""
+    web.post(
+        "/entries/",
+        {
+            "project_id": "acme-web",
+            "duration": "1h30m",
+            "date": "2026-09-21",
+            "start": "13:00",
+        },
+    )
+    entry = storage.load_entries(date(2026, 9, 21), date(2026, 9, 21))[0]
+
+    assert (entry.start.hour, entry.start.minute) == (13, 0)
+    assert (entry.end.hour, entry.end.minute) == (14, 30)
+    assert "13:00" in text_of(web.get(f"/entries/{entry.id}/edit"))
+
+
+def test_a_single_digit_hour_is_accepted(web, storage: Storage) -> None:
+    """A text field invites 9:05, so it must not be an error."""
+    web.post(
+        "/entries/",
+        {"project_id": "acme-web", "duration": "1h", "date": "2026-09-22", "start": "9:05"},
+    )
+    entry = storage.load_entries(date(2026, 9, 22), date(2026, 9, 22))[0]
+    assert (entry.start.hour, entry.start.minute) == (9, 5)
+
+
+def test_a_twelve_hour_time_is_refused_with_a_message(web) -> None:
+    response = web.post(
+        "/entries/",
+        {"project_id": "acme-web", "duration": "1h", "date": "2026-09-21", "start": "1:30 PM"},
+    )
+    body = text_of(response)
+    assert "Cannot read" in body
+    assert "24-hour" in body
+    assert "Traceback" not in body
+
+
+def test_times_are_shown_on_a_24_hour_clock(web, storage: Storage) -> None:
+    """FR-3: the dashboard shows the timer's start, never as am/pm."""
+    web.post("/timer/start", {"project_id": "acme-web"})
+    html = text_of(web.get("/"))
+
+    assert "started" in html
+    assert " AM" not in html and " PM" not in html
+
+
+def test_the_entry_table_shows_24_hour_times(web) -> None:
+    html = text_of(web.get("/entries/?all=1"))
+    assert "23:40" in html  # the entry that runs past midnight
+    assert "PM" not in html

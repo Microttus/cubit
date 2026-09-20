@@ -65,7 +65,8 @@ cubit web                          # opens http://127.0.0.1:8000
 | `cubit menubar` | Start the macOS menu bar app *(macOS only)* |
 
 Durations accept `90m`, `1h30m`, `1.5h` and `1:30`. Dates accept `YYYY-MM-DD`,
-`today` and `yesterday`.
+`today` and `yesterday`. Times are 24-hour everywhere, so `--start 13:00` is one
+in the afternoon and `1:30` is half past one at night.
 
 `cubit list` shows the current month by default; `--all` shows everything, and
 `--from` / `--to` / `--project` / `--client` / `--category` narrow it down.
@@ -232,6 +233,19 @@ projects:
 ```
 
 You can edit these files by hand. Cubit validates them on load and tells you which file and row is wrong.
+
+`config.yaml` holds the settings. `currency` defaults to `NOK` and is just a
+label on the money — cubit never converts between currencies — so change it to
+`EUR`, `USD` or anything else and every report follows:
+
+```yaml
+currency: NOK
+week_starts_on: monday
+budget_warning_percent: 80
+prompt_for_category: true
+theme: dark                   # dark | light | auto
+menubar_title: time           # none | time | project-time (macOS)
+```
 
 ## Development
 

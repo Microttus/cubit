@@ -28,6 +28,16 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ### Changed
 
+- `currency` now defaults to `NOK` rather than `EUR`. It was always a setting in
+  `config.yaml` and still is; only the default changed, and existing folders are
+  untouched because their `config.yaml` already names a currency.
+- Times are 24-hour in the web app too. The entry form used `<input type="time">`,
+  which a browser draws in its own locale, so a US-locale machine offered an
+  am/pm picker for a field cubit stores, prints and reports as `HH:MM`. It is now
+  a plain `HH:MM` box, and both the CLI and the web app accept a single-digit
+  hour (`9:05`) while refusing `1:30 PM` rather than guessing at it.
+- `cubit init` writes `menubar_title` into the starter `config.yaml`, so every
+  documented setting is visible to someone editing the file by hand.
 - `config.yaml` accepts `menubar_title`. REQUIREMENTS 4.3 already documented
   the key, but the config model rejected unknown keys, so a config file written
   to the documented shape did not load. Existing files are unaffected: the key

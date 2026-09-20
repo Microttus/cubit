@@ -32,7 +32,12 @@
         </div>
         <div class="field field-narrow">
           <label for="start">Start (optional)</label>
-          <input id="start" type="time" name="start" value="{{ entry.start | clock if entry else '' }}">
+          {# Not type="time": a browser renders that in its own locale, which
+             shows am/pm on a US-locale machine. Cubit is 24-hour throughout. #}
+          <input id="start" name="start" class="mono" inputmode="numeric"
+                 pattern="[0-9]{1,2}:[0-9]{2}" placeholder="09:05"
+                 title="A 24-hour time like 09:05 or 17:30"
+                 value="{{ entry.start | clock if entry else '' }}">
         </div>
       </div>
 
@@ -63,8 +68,8 @@
     </form>
   </div>
 
-  <p class="muted">Durations accept 90m, 1h30m, 1.5h and 1:30. A new category is registered
-    on the project as soon as you use it.</p>
+  <p class="muted">Durations accept 90m, 1h30m, 1.5h and 1:30, and times are on a
+    24-hour clock. A new category is registered on the project as soon as you use it.</p>
 
   {{ datalists(suggestions) }}
 {% endblock %}

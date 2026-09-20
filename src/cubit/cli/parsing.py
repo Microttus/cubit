@@ -10,6 +10,7 @@ from datetime import date, time, timedelta
 from decimal import Decimal, InvalidOperation
 
 from cubit.core import CubitError, parse_duration
+from cubit.core import parse_clock as parse_time_of_day
 
 __all__ = ["parse_day", "parse_hours", "parse_minutes", "parse_money", "parse_clock"]
 
@@ -39,17 +40,8 @@ def parse_day(text: str | None, *, today: date | None = None) -> date | None:
 
 
 def parse_clock(text: str | None) -> time | None:
-    """A time of day as ``HH:MM``."""
-    if text is None or not text.strip():
-        return None
-    try:
-        parsed = time.fromisoformat(text.strip())
-    except ValueError:
-        raise CubitError(
-            f"Cannot read {text!r} as a time.",
-            hint="Use HH:MM, for example 09:05.",
-        ) from None
-    return time(parsed.hour, parsed.minute)
+    """A time of day on a 24-hour clock (FR-27's neighbour)."""
+    return parse_time_of_day(text)
 
 
 def parse_money(text: str | None) -> Decimal | None:

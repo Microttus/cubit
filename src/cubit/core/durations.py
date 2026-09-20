@@ -91,6 +91,34 @@ def _validated(minutes: int, raw: str) -> int:
     return minutes
 
 
+#: A time of day: ``9:05`` or ``09:05``, always on a 24-hour clock.
+_CLOCK_TIME = re.compile(r"^(?P<hour>\d{1,2}):(?P<minute>\d{2})$")
+
+CLOCK_HINT = "Use a 24-hour time like 09:05 or 17:30."
+
+
+def parse_clock(text: str | None) -> time | None:
+    """Parse a time of day. Blank means no time at all.
+
+    Cubit is 24-hour throughout: entries store ``HH:MM`` and every report and
+    menu shows it that way, so ``1:30`` is half past one in the morning, and
+    there is no am/pm to get wrong. A single-digit hour is accepted, because a
+    text field invites ``9:05``.
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return None
+
+    match = _CLOCK_TIME.match(raw)
+    if match is None:
+        raise DurationError(f"Cannot read {text!r} as a time.", hint=CLOCK_HINT)
+
+    hour, minute = int(match["hour"]), int(match["minute"])
+    if hour > 23 or minute > 59:
+        raise DurationError(f"{text!r} is not a valid time of day.", hint=CLOCK_HINT)
+    return time(hour, minute)
+
+
 def minutes_between(start: time, end: time) -> int:
     """Whole minutes from ``start`` to ``end``, wrapping past midnight.
 

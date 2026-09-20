@@ -23,6 +23,7 @@ from cubit.core.durations import (
     format_duration,
     format_hours,
     minutes_between,
+    parse_clock,
     parse_duration,
 )
 from cubit.core.errors import (
@@ -137,6 +138,7 @@ __all__ = [
     "normalize_category",
     "normalize_optional_category",
     "now_local",
+    "parse_clock",
     "parse_duration",
     "rank_categories",
     "rate_for_date",

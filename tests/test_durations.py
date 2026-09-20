@@ -6,7 +6,13 @@ from datetime import time
 
 import pytest
 
-from cubit.core import DurationError, format_duration, minutes_between, parse_duration
+from cubit.core import (
+    DurationError,
+    format_duration,
+    minutes_between,
+    parse_clock,
+    parse_duration,
+)
 from cubit.core.durations import format_hours
 
 
@@ -71,3 +77,41 @@ def test_minutes_between_wraps_past_midnight() -> None:
     """FR-9: a timer that ran past midnight stores end before start."""
     assert minutes_between(time(9, 5), time(10, 35)) == 90
     assert minutes_between(time(23, 40), time(0, 25)) == 45
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("09:05", time(9, 5)),
+        ("9:05", time(9, 5)),  # a text field invites a single-digit hour
+        ("13:00", time(13, 0)),
+        ("1:30", time(1, 30)),  # half past one at night, not in the afternoon
+        ("00:00", time(0, 0)),
+        ("23:59", time(23, 59)),
+        ("  17:30  ", time(17, 30)),
+    ],
+)
+def test_parse_clock_reads_a_24_hour_time(text: str, expected: time) -> None:
+    """Cubit is 24-hour throughout, so there is no am/pm to get wrong."""
+    assert parse_clock(text) == expected
+
+
+@pytest.mark.parametrize("text", [None, "", "   "])
+def test_a_blank_time_means_no_time(text: str | None) -> None:
+    assert parse_clock(text) is None
+
+
+@pytest.mark.parametrize(
+    "text", ["24:00", "25:00", "09:60", "9am", "1:30 PM", "noon", "930", "9.30", "9:5"]
+)
+def test_parse_clock_rejects_anything_else(text: str) -> None:
+    with pytest.raises(DurationError) as caught:
+        parse_clock(text)
+    assert "24-hour" in (caught.value.hint or "")
+
+
+def test_a_twelve_hour_time_is_refused_rather_than_guessed() -> None:
+    """Reading '1:30 PM' as 13:30 would silently invent an hour."""
+    with pytest.raises(DurationError):
+        parse_clock("1:30 PM")
+    assert parse_clock("13:30") == time(13, 30)

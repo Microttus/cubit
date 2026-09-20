@@ -262,3 +262,27 @@ def test_the_entry_count_is_singular_for_one(cli) -> None:
     """FR-28: totals read like a sentence, not a template."""
     assert "1 entry, " in cli("list", "--all", "--limit", "1").stdout
     assert "6 entries, " in cli("list", "--all").stdout
+
+
+def test_the_cli_reads_a_24_hour_start_time(cli, storage: Storage) -> None:
+    """13:00 is the afternoon; there is no am/pm anywhere in cubit."""
+    result = cli("add", "acme-web", "1h", "--date", "2026-09-21", "--start", "13:00", "--yes")
+    entry = storage.find_entry(_entry_id(result.stdout))
+
+    assert entry is not None
+    assert (entry.start.hour, entry.end.hour) == (13, 14)
+
+
+def test_the_cli_accepts_a_single_digit_hour(cli, storage: Storage) -> None:
+    result = cli("add", "acme-web", "1h", "--date", "2026-09-21", "--start", "9:05", "--yes")
+    entry = storage.find_entry(_entry_id(result.stdout))
+
+    assert entry is not None
+    assert (entry.start.hour, entry.start.minute) == (9, 5)
+
+
+def test_the_cli_refuses_a_twelve_hour_time(cli) -> None:
+    result = cli("add", "acme-web", "1h", "--date", "2026-09-21", "--start", "1:30 PM", "--yes")
+
+    assert result.exit_code == EXIT_ERROR
+    assert "24-hour" in result.output
