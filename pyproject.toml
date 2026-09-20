@@ -41,3 +41,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+# Typer declares options as call-valued defaults; that is the documented API.
+"src/cubit/cli/*" = ["B008"]
