@@ -172,6 +172,50 @@ launchctl load -w ~/Library/LaunchAgents/no.icecubesol.cubit.plist
 tells you the `launchctl` command rather than running it, because loading an
 agent changes your login session and that should be your decision.
 
+### Cubit.app
+
+There is also a real app bundle, for when you would rather install something
+than keep a terminal in the loop:
+
+```bash
+./build_macos_app.sh               # writes dist/Cubit.app, a .dmg and a .zip
+```
+
+Open the disk image, drag **Cubit** to Applications, and start it from
+Spotlight or Launchpad like any other app. Everything it needs is inside the
+bundle -- Python, rumps, Flask, the templates, the font and the icons -- so the
+Mac you install it on needs no Python, no pipx and no `cubit` on its PATH. It
+is an agent app: a menu bar icon and nothing else, with no Dock icon and no
+app switcher entry.
+
+To have it start at login, add it in System Settings -> General -> Login Items.
+That replaces `cubit menubar install-login`, so remove the LaunchAgent if you
+have one, or you will get two Cubit icons in the menu bar:
+
+```bash
+cubit menubar uninstall-login
+```
+
+The app and the `cubit` command share one data folder (`~/cubit-data` unless
+`CUBIT_DATA_DIR` says otherwise), so a timer started in the app stops from the
+CLI and the other way round. On first run with no data folder, it offers to
+create one. Run with arguments the bundle *is* the CLI, which is how it starts
+its own web app:
+
+```bash
+/Applications/Cubit.app/Contents/MacOS/Cubit report week
+```
+
+The build signs the app ad-hoc, which is enough for the Mac that built it and
+for anyone willing to right-click -> Open the first time. A download other
+people can open without that needs a paid Developer ID and notarisation.
+
+Rebuilding the icon, after changing `packaging/macos/app_icon.svg`:
+
+```bash
+./tools/make_icns.sh               # needs librsvg, inkscape or imagemagick
+```
+
 ## Checking the data
 
 `cubit check` reads the whole folder and reports everything wrong with it in one

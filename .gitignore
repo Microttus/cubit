@@ -227,3 +227,8 @@ __marimo__/
 
 # Local scratch
 files*.zip
+
+# The macOS app build (FR-76): its own build environment and the iconset that
+# tools/make_icns.sh turns into the committed .icns.
+.venv-build/
+*.iconset/

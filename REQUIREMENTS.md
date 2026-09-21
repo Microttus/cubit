@@ -190,6 +190,7 @@ Quit Cubit
 | FR-73 | Must | Errors never fail silently. If the data files are invalid or locked, the menu shows a "Data problem: run `cubit check`" item. Unexpected errors show a notification and are logged. |
 | FR-74 | Should | Start at login: `cubit menubar install-login` writes a LaunchAgent (`no.icecubesol.cubit`) that starts the app at login, and `uninstall-login` removes it. Quitting from the menu does not relaunch it. |
 | FR-75 | Should | Installation: `pipx install ".[menubar]"` puts `cubit` on the PATH. `rumps` is an optional extra, installed on macOS only. During development: `pip install -e ".[menubar]"`. |
+| FR-79 | Should | **Installable app:** `./build_macos_app.sh` builds `Cubit.app`, a self-contained bundle (Python, rumps, Flask, templates, fonts and icons inside it), and packs it into a drag-to-install `.dmg` and a `.zip`. The bundle is an agent app (`LSUIElement`): a menu bar icon and nothing else, no Dock icon. Run with arguments it is the CLI, which is how it starts its own web app (FR-68), since a bundle has no `cubit` on its PATH. Opened with no data folder yet, it offers to create one instead of failing silently. It is signed ad-hoc, not notarised. |
 | FR-76 | Could | **Add entry...** in the menu for a quick manual entry (project, duration, note) through dialogs. |
 | FR-77 | Could | Notification when a timer has run longer than a configurable number of hours (default 8), to catch a forgotten timer. |
 

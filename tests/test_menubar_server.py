@@ -170,3 +170,41 @@ def test_the_command_carries_the_data_folder(tmp_path: Path) -> None:
     assert "--data-dir" in command
     assert str(tmp_path) in command
     assert command[-3:] == ["web", "--port", "8000"]
+
+
+def test_a_frozen_app_starts_the_web_app_by_running_itself(monkeypatch, tmp_path: Path) -> None:
+    """FR-79: inside the bundle there is no 'cubit' on the PATH, and no -m."""
+    import sys
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/Applications/Cubit.app/Contents/MacOS/Cubit")
+
+    command = WebServer(port=8000, data_dir=tmp_path)._command()
+
+    assert command == [
+        "/Applications/Cubit.app/Contents/MacOS/Cubit",
+        "--data-dir",
+        str(tmp_path),
+        "web",
+        "--port",
+        "8000",
+    ]
+
+
+def test_a_frozen_app_never_looks_for_cubit_on_the_path(monkeypatch) -> None:
+    """The PATH a GUI app inherits has no pipx or virtualenv on it."""
+    import sys
+
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "/Applications/Cubit.app/Contents/MacOS/Cubit")
+    monkeypatch.setattr(
+        "cubit.menubar.server.shutil.which",
+        lambda _name: (_ for _ in ()).throw(AssertionError("looked on the PATH")),
+    )
+
+    assert WebServer(port=8000)._command() == [
+        "/Applications/Cubit.app/Contents/MacOS/Cubit",
+        "web",
+        "--port",
+        "8000",
+    ]

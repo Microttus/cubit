@@ -117,10 +117,20 @@ class WebServer:
             process.kill()
 
     def _command(self) -> list[str] | None:
-        executable = shutil.which("cubit")
-        command = [executable] if executable else [sys.executable, "-m", "cubit.cli.main"]
-        if executable is None and not Path(sys.executable).exists():  # pragma: no cover
-            return None
+        """How to start a second cubit, from wherever this one is running.
+
+        Inside the macOS app bundle there is no ``cubit`` on the PATH a GUI app
+        inherits, and ``-m`` does not work on a frozen executable, so the
+        bundle starts the web app by running itself with ``web`` after it
+        (FR-79). ``launcher.py`` is what makes that mean the CLI.
+        """
+        if getattr(sys, "frozen", False):
+            command = [sys.executable]
+        else:
+            executable = shutil.which("cubit")
+            command = [executable] if executable else [sys.executable, "-m", "cubit.cli.main"]
+            if executable is None and not Path(sys.executable).exists():  # pragma: no cover
+                return None
         if self.data_dir is not None:
             command += ["--data-dir", str(self.data_dir)]
         return [*command, "web", "--port", str(self.port)]

@@ -60,11 +60,16 @@ src/cubit/
     ├── app.py         # the only module that imports rumps
     ├── server.py      # find or start the web app for Open dashboard (FR-68)
     ├── login.py       # the LaunchAgent plist (FR-74)
-    └── assets/        # the two template icons
+    └── assets/        # the two template icons, and the app icon (.icns)
 tests/
 └── fixtures/
     └── sample-data/   # a small realistic data folder used by the tests
 design/    # starter theme.css, logo and brand preview (M4); menubar/ icons (M6)
+packaging/ # macos/app_icon.svg, the source of the .icns (FR-79)
+tools/     # make_icns.sh, run only when the app icon changes
+launcher.py            # the app bundle's entry point: CLI with arguments,
+                       # menu bar app without (FR-79)
+build_macos_app.sh     # Cubit.app + .dmg + .zip into dist/ (FR-79)
 ```
 
 ## Commands
@@ -85,6 +90,7 @@ cubit report week
 cubit check
 cubit web
 cubit menubar                                       # macOS only
+./build_macos_app.sh                                # Cubit.app + dmg (macOS only)
 ```
 
 ## Architecture rules
@@ -125,6 +131,8 @@ cubit menubar                                       # macOS only
 - macOS: only `menubar/app.py` may import rumps, and it is imported lazily, so every other command works without the extra. Everything the menu shows is decided in `menubar/model.py`, which is pure and tested without macOS (FR-71).
 - macOS: every menu callback is wrapped, because an exception in one kills the app with no window to report it in. Errors become a notification and a log line (FR-73).
 - macOS: a menu bar click must never wait on the folder lock. Reads do not take it; writes use a short `lock_timeout`.
+- macOS: the app bundle is one executable doing two jobs, split in `launcher.py`. Anything that starts a second cubit process must go through `WebServer._command()`, which knows that a frozen app has no `cubit` on its PATH and cannot use `-m` (FR-79).
+- macOS: `cubit.icns` is committed. `tools/make_icns.sh` regenerates it from `packaging/macos/app_icon.svg` and is the only step that needs a non-macOS tool, so the build itself never does.
 - Keep dependencies minimal. Ask before adding one.
 
 ## Testing

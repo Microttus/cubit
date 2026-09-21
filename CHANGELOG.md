@@ -25,6 +25,22 @@ breaking change and is listed under **Changed** with what to do about it.
   - Installed as an extra, macOS only: `pipx install "cubit[menubar]"` (FR-75).
 - `/healthz` on the web app, so the menu bar app can tell a cubit server from
   whatever else might be on port 8000 before opening the browser (FR-68).
+- **`Cubit.app`, an installable macOS app** (FR-79). `./build_macos_app.sh`
+  freezes the menu bar app into a self-contained bundle -- Python, rumps,
+  Flask, the templates, the font and the icons all inside it -- and packs it
+  into a drag-to-install `.dmg` and a `.zip` under `dist/`. Installing it needs
+  no Python, no pipx and no `cubit` on the PATH, and it starts from Spotlight
+  or from Login Items rather than from a terminal. It is an agent app
+  (`LSUIElement`): a menu bar icon, no Dock icon, no app switcher entry.
+  - The bundle is also the CLI: run with arguments it behaves exactly like
+    `cubit`, which is how the menu bar app inside it starts its own web app.
+    A frozen app has no `cubit` on its PATH and cannot use `-m`.
+  - Opened with no data folder yet, it offers to create one in a dialog
+    instead of exiting silently the way a bundled app with no terminal does.
+  - Ad-hoc signed, not notarised: fine for your own Macs, and honest about
+    what a public download would still need.
+  - The app icon is `packaging/macos/app_icon.svg`, turned into the committed
+    `cubit.icns` by `tools/make_icns.sh`.
 - **Settings page** in the web app, editing the six settings in `config.yaml`
   through a form (FR-78). Saving validates the whole config before writing, so a
   bad value leaves the file exactly as it was, and the comments in the file

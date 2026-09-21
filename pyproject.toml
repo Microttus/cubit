@@ -23,6 +23,8 @@ dev = ["pytest>=8.0", "ruff>=0.5"]
 # The macOS menu bar app (FR-75). rumps is macOS only, so the marker keeps it
 # from being installed anywhere it cannot work.
 menubar = ["rumps>=0.4; sys_platform == 'darwin'"]
+# Building Cubit.app and its disk image (FR-76). macOS only, like the app.
+build = ["pyinstaller>=6.10,<7; sys_platform == 'darwin'"]
 
 [project.scripts]
 cubit = "cubit.cli.main:app"
@@ -38,11 +40,15 @@ cubit = [
     "web/static/*",
     "web/static/fonts/*",
     "menubar/assets/*.png",
+    "menubar/assets/*.icns",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+# launcher.py sits at the repo root rather than in the package: it belongs to
+# the app bundle, not to what pip installs. The tests still have to import it.
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

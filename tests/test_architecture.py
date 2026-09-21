@@ -212,3 +212,44 @@ def test_the_icon_sources_are_kept_in_design() -> None:
         "cubit-menubar-runningTemplate.png",
     ]:
         assert (design / name).exists(), name
+
+
+ROOT = Path(__file__).resolve().parents[1]
+BUILD_SCRIPT = ROOT / "build_macos_app.sh"
+
+
+def test_the_app_icon_is_a_real_icns() -> None:
+    """FR-79: the build refuses to run without it, so it is committed."""
+    icon = MENUBAR / "assets" / "cubit.icns"
+
+    assert icon.exists(), "run tools/make_icns.sh"
+    assert icon.read_bytes()[:4] == b"icns", "that is not an icns file"
+    assert (ROOT / "packaging" / "macos" / "app_icon.svg").exists(), "the icon's source"
+
+
+def test_the_icon_ships_with_the_package() -> None:
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "menubar/assets/*.icns" in pyproject
+
+
+def test_the_bundle_and_the_login_agent_agree_on_the_name() -> None:
+    """Two ways to start one app: they must not claim different identities."""
+    from cubit.menubar.login import LABEL
+
+    assert f"BUNDLE_ID:-{LABEL}" in BUILD_SCRIPT.read_text(encoding="utf-8")
+
+
+def test_the_bundle_is_a_menu_bar_app_and_not_a_window_app() -> None:
+    """Without LSUIElement the app gets a Dock icon and an app switcher entry."""
+    assert '"LSUIElement": True' in BUILD_SCRIPT.read_text(encoding="utf-8")
+
+
+def test_the_bundle_carries_the_packages_data_files() -> None:
+    """Without this the app starts and then 404s its own templates and fonts."""
+    assert "--collect-data cubit" in BUILD_SCRIPT.read_text(encoding="utf-8")
+
+
+def test_the_build_smoke_tests_what_it_built() -> None:
+    """A bundle that cannot run the CLI cannot start its own web app (FR-68)."""
+    script = BUILD_SCRIPT.read_text(encoding="utf-8")
+    assert '"${APP_EXECUTABLE}" --version' in script
