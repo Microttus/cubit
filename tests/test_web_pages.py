@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from cubit.core import ProjectStatus, Storage
-from helpers import row_for, text_of
+from helpers import active_tab, row_for, text_of
 
 # --------------------------------------------------------------- dashboard
 
@@ -427,7 +427,11 @@ def test_reports_unrated_time_is_flagged(web) -> None:
 
 
 def test_an_unknown_report_view_falls_back_to_the_week(web) -> None:
-    assert "By day" in text_of(web.get("/reports/?view=nonsense"))
+    """Which view rendered, not what was in it: this week is often empty."""
+    html = text_of(web.get("/reports/?view=nonsense"))
+
+    assert active_tab(html) == "Week"
+    assert "Week " in html  # the period header the week view always draws
 
 
 # ------------------------------------------------------------------- theme
