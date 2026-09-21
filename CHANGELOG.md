@@ -56,6 +56,15 @@ breaking change and is listed under **Changed** with what to do about it.
   timeout is settable per `Storage`, which is what keeps the menu bar app from
   freezing on a folder another process is writing to.
 
+### Fixed
+
+- **Quit Cubit** in the menu bar now always quits (FR-69). Every callback is
+  wrapped so that an error cannot take the app down, which meant an error while
+  stopping the web app on the way out was swallowed and left the app in the
+  menu bar with a "Something went wrong" notification, as if Quit were broken.
+  The web app is now stopped best-effort and logged if it fails, and the app
+  quits either way.
+
 ## [0.1.0] - 2026-09-20
 
 The first working version. Log time from a command line or a local web app,

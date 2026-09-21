@@ -269,9 +269,19 @@ class CubitMenuBar:
 
     @guarded
     def _quit(self, _sender: Any) -> None:
-        """Close the menu bar app only. A running timer keeps running (FR-69)."""
-        self.web.stop()
-        self.rumps.quit_application()
+        """Close the menu bar app only. A running timer keeps running (FR-69).
+
+        Quitting is the one callback :func:`guarded` must not be able to stop:
+        an exception on the way out would otherwise leave the app sitting in
+        the menu bar with a notification, as if Quit were broken. So the web
+        app is stopped best-effort, and the app quits either way.
+        """
+        try:
+            self.web.stop()
+        except Exception:
+            log.exception("could not stop the web app we started")
+        finally:
+            self.rumps.quit_application()
 
     # ------------------------------------------------------------ dialogs
 
