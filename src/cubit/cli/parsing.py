@@ -74,3 +74,12 @@ def parse_hours(text: str | None) -> Decimal | None:
     if value <= 0:
         raise CubitError(f"A budget must be more than zero hours: {text}.")
     return value
+
+
+def parse_billing(billed: bool, unbilled: bool) -> bool | None:
+    """The --billed / --unbilled pair as a filter for find_entries (FR-81)."""
+    if billed and unbilled:
+        raise CubitError("Use either --billed or --unbilled, not both.")
+    if billed:
+        return True
+    return False if unbilled else None

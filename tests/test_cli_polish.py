@@ -144,9 +144,9 @@ def test_the_default_format_is_still_the_table(cli) -> None:
 
 
 def test_an_unknown_format_is_a_user_error(cli) -> None:
-    result = cli("report", "week", "2026-09-18", "--format", "pdf")
+    result = cli("report", "week", "2026-09-18", "--format", "xlsx")
     assert result.exit_code == EXIT_ERROR
-    assert "text, csv, markdown" in result.output
+    assert "text, csv, markdown, pdf" in result.output
 
 
 def test_a_project_export_carries_the_budget(cli) -> None:
@@ -195,7 +195,7 @@ def test_completion_offers_categories_and_clients(sample_dir: Path, monkeypatch)
 
 
 def test_completion_offers_the_formats_and_shells() -> None:
-    assert complete_format("") == ["text", "csv", "markdown"]
+    assert complete_format("") == ["text", "csv", "markdown", "pdf"]
     assert complete_format("c") == ["csv"]
     assert complete_shell("z") == ["zsh"]
 

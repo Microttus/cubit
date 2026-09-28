@@ -77,7 +77,9 @@
           <td class="numeric">{{ entry.duration_minutes | duration }}</td>
           <td>{{ entry_project_name(projects_by_id, entry.project_id) }}</td>
           <td>{{ category_chip(entry.category) }}</td>
-          <td>{{ entry.note }}</td>
+          <td>{{ entry.note }}
+            {%- if entry.billed_on %} <span class="chip chip-muted" title="Billed on {{ entry.billed_on | day }}">billed {{ entry.billed_on | day }}</span>{% endif -%}
+          </td>
           <td class="numeric">
             <a class="btn btn-quiet btn-small" href="{{ url_for('entries.edit', entry_id=entry.id) }}">Edit</a>
             <form class="inline-form" method="post"

@@ -11,7 +11,7 @@ counted apart rather than as zero, so a report can say "unrated" (FR-15).
 from __future__ import annotations
 
 import calendar
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -277,13 +277,12 @@ def summarize(
     start: date,
     end: date,
     week_starts_on: str = "monday",
-    fill_days: bool = False,
 ) -> Summary:
     """Total a period and break it down every way a summary might show.
 
-    ``by_week`` always covers every week the period touches, so a month shows
-    its quiet weeks too. ``by_day`` does the same only when ``fill_days`` is
-    set, because a long range would otherwise be mostly empty rows.
+    ``by_day`` and ``by_week`` only hold days and weeks something was logged
+    on. Part-time work leaves most days empty, and an hour log over a long
+    period should not be mostly blank rows.
     """
     selected = [entry for entry in entries if start <= entry.date <= end]
 
@@ -294,18 +293,12 @@ def summarize(
         label=lambda key: key,
         order="key",
     )
-    if fill_days:
-        by_day = _fill(by_day, [_day.isoformat() for _day in _days_between(start, end)])
-
-    by_week = _fill(
-        _lines(
-            selected,
-            projects,
-            key=lambda entry: week_label(entry.date, week_starts_on),
-            label=lambda key: key,
-            order="key",
-        ),
-        [week_label(day, week_starts_on) for day in _week_starts(start, end, week_starts_on)],
+    by_week = _lines(
+        selected,
+        projects,
+        key=lambda entry: week_label(entry.date, week_starts_on),
+        label=lambda key: key,
+        order="key",
     )
 
     return Summary(
@@ -333,13 +326,20 @@ def project_report(
     start: date | None = None,
     end: date | None = None,
     warning_percent: int = 80,
+    billed: bool | None = None,
 ) -> ProjectReport:
     """One project: its period, its whole history and its budget (FR-19, FR-49).
 
     ``entries`` may hold every entry there is; only this project's are used.
+    ``billed`` narrows the period to billed or unbilled entries (FR-81), while
+    the total and the budget still count every hour, billed or not.
     """
     own = [entry for entry in entries if entry.project_id == project.id]
-    selected = [entry for entry in own if _in_range(entry, start, end)]
+    selected = [
+        entry
+        for entry in own
+        if _in_range(entry, start, end) and (billed is None or entry.is_billed == billed)
+    ]
 
     budget = None
     if project.budget_minutes is not None:
@@ -501,25 +501,3 @@ def _category_lines(entries: Iterable[Entry], projects: Mapping[str, Project]) -
         key=lambda entry: entry.category or "",
         label=lambda slug: f"#{slug}" if slug else UNCATEGORIZED,
     )
-
-
-def _fill(lines: Sequence[Line], keys: Sequence[str]) -> list[Line]:
-    """Add empty rows for keys nothing was logged against, in ``keys`` order."""
-    known = {line.key: line for line in lines}
-    filled = [known.get(key, Line(key=key, label=key, amount=Amount())) for key in keys]
-    extra = [line for line in lines if line.key not in set(keys)]
-    return filled + sorted(extra, key=lambda line: line.key)
-
-
-def _days_between(start: date, end: date) -> list[date]:
-    return [start + timedelta(days=offset) for offset in range((end - start).days + 1)]
-
-
-def _week_starts(start: date, end: date, week_starts_on: str) -> list[date]:
-    first, _ = week_bounds(start, week_starts_on)
-    starts = []
-    cursor = first
-    while cursor <= end:
-        starts.append(cursor)
-        cursor += timedelta(days=7)
-    return starts

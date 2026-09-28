@@ -120,6 +120,12 @@ class Entry(_Model):
     project_id: Slug
     category: str | None = None
     note: str = ""
+    #: The day the entry went onto an invoice; ``None`` while it is unbilled (FR-81).
+    billed_on: date | None = None
+
+    @property
+    def is_billed(self) -> bool:
+        return self.billed_on is not None
 
     @field_validator("id")
     @classmethod

@@ -42,9 +42,11 @@ from cubit.core.export import (
     client_document,
     project_document,
     render,
+    render_file,
     summary_document,
     to_csv,
     to_markdown,
+    with_title,
 )
 from cubit.core.models import (
     Config,
@@ -54,6 +56,7 @@ from cubit.core.models import (
     Rate,
     TimerState,
 )
+from cubit.core.pdf import to_pdf
 from cubit.core.rates import earnings, earnings_for_entry, is_unrated, rate_for_date
 from cubit.core.reports import (
     UNCATEGORIZED,
@@ -92,6 +95,7 @@ from cubit.core.service import (
     remove_entry,
     remove_project,
     running_timer,
+    set_billed,
     set_rate,
     start_timer,
     stop_timer,
@@ -157,6 +161,7 @@ __all__ = [
     "find_entries",
     "register_project_category",
     "remove_entry",
+    "set_billed",
     "remove_project",
     "running_timer",
     "set_rate",
@@ -193,7 +198,10 @@ __all__ = [
     "client_document",
     "project_document",
     "render",
+    "render_file",
     "summary_document",
     "to_csv",
     "to_markdown",
+    "to_pdf",
+    "with_title",
 ]

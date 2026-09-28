@@ -127,19 +127,20 @@ def test_summarize_by_client(entries, projects) -> None:
     assert summary.by_client[1].amount.unrated_minutes == 30
 
 
-def test_summarize_by_day_fills_the_quiet_days(entries, projects) -> None:
-    """FR-17: a week shows every day, including the ones with nothing on them."""
-    summary = summarize(
-        entries, projects, start=date(2026, 8, 31), end=date(2026, 9, 6), fill_days=True
-    )
+def test_summarize_leaves_out_the_days_nothing_was_logged(entries, projects) -> None:
+    """FR-17: a week lists the days worked, not every day of it."""
+    summary = summarize(entries, projects, start=date(2026, 8, 31), end=date(2026, 9, 6))
 
-    assert len(summary.by_day) == 7
-    assert [line.key for line in summary.by_day][0] == "2026-08-31"
+    assert [line.key for line in summary.by_day] == [
+        "2026-08-31",
+        "2026-09-01",
+        "2026-09-02",
+        "2026-09-03",
+    ]
     assert summary.by_day[0].amount.minutes == 60
-    assert summary.by_day[4].amount.minutes == 0  # 4 September
 
 
-def test_summarize_by_day_stays_sparse_by_default(entries, projects) -> None:
+def test_summarize_by_day_over_a_month_lists_only_the_days_worked(entries, projects) -> None:
     summary = summarize(entries, projects, start=date(2026, 9, 1), end=date(2026, 9, 30))
     assert [line.key for line in summary.by_day] == [
         "2026-09-01",
@@ -149,20 +150,13 @@ def test_summarize_by_day_stays_sparse_by_default(entries, projects) -> None:
     ]
 
 
-def test_summarize_by_week_covers_every_week_the_month_touches(entries, projects) -> None:
-    """FR-18: a month's weeks, quiet ones included, in order."""
+def test_summarize_by_week_leaves_out_the_quiet_weeks(entries, projects) -> None:
+    """FR-18: a month's weeks with something logged, in order."""
     summary = summarize(entries, projects, start=date(2026, 9, 1), end=date(2026, 9, 30))
 
-    assert [line.key for line in summary.by_week] == [
-        "2026-W36",
-        "2026-W37",
-        "2026-W38",
-        "2026-W39",
-        "2026-W40",
-    ]
+    assert [line.key for line in summary.by_week] == ["2026-W36", "2026-W37"]
     assert summary.by_week[0].amount.minutes == 300  # 1 to 3 September
     assert summary.by_week[1].amount.minutes == 60  # 10 September
-    assert summary.by_week[2].amount.minutes == 0
 
 
 def test_summarize_by_category_across_projects(entries, projects) -> None:
@@ -195,7 +189,8 @@ def test_summarize_a_period_with_nothing_in_it(projects) -> None:
     summary = summarize([], projects, start=date(2026, 9, 1), end=date(2026, 9, 30))
     assert summary.total.minutes == 0
     assert summary.by_project == []
-    assert all(line.amount.minutes == 0 for line in summary.by_week)
+    assert summary.by_day == []
+    assert summary.by_week == []
 
 
 # -------------------------------------------------------- project report

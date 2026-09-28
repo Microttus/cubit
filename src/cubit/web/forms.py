@@ -50,6 +50,20 @@ def day(values, name: str, default: date | None = None) -> date | None:
         raise CubitError(f"Cannot read {raw!r} as a date.", hint="Use YYYY-MM-DD.") from None
 
 
+#: The billing filter's choices, and what find_entries makes of each (FR-81).
+BILLING = {"all": None, "unbilled": False, "billed": True}
+
+
+def billing(values, name: str = "billing") -> bool | None:
+    """True for billed entries only, False for unbilled only, None for both."""
+    return BILLING.get(text(values, name, "all"))
+
+
+def many(values, name: str) -> list[str]:
+    """Every value of a repeated field, such as the entry ids of a bulk action."""
+    return [value.strip() for value in values.getlist(name) if value.strip()]
+
+
 def clock(values, name: str) -> time | None:
     """A time of day on a 24-hour clock, the same way the CLI reads one."""
     return parse_clock(text(values, name))

@@ -47,8 +47,44 @@ breaking change and is listed under **Changed** with what to do about it.
   survive. The page names the folder and the file it edits, because a settings
   page should not hide the file behind it.
 
+- **PDF export** of any report (FR-80): a download on the reports page, and
+  `--format pdf --output FILE` in the CLI. It has the Cubit logo, the date it
+  was generated, the same tables as the CSV and Markdown exports, and a
+  "Made with Cubit, a product of IceCube Solutions" footer with page numbers.
+  No new dependency: the PDF is written by cubit itself with the fonts every
+  PDF reader has built in. PDF export moves off the out-of-scope list.
+- **A title of your own on an export** (FR-80): `--title` on every report
+  command, and a title field beside the download buttons in the web app. A
+  report over a custom range is otherwise headed "Custom range"; the title also
+  names the downloaded file. Left blank, the report keeps its usual title.
+
+- **Billed entries** (FR-81), for invoicing in an accounting system such as
+  Fiken: mark entries as billed on a date, filter on it, and export the
+  unbilled hours as the hour log for the invoice.
+  - `cubit bill` marks entries by id, or every unbilled entry matching
+    `--from`/`--to`/`--project`/`--client`/`--category`, after showing them
+    and their total (`--on DATE` for a date other than today, `-y` to skip
+    the question). `cubit unbill` undoes it by id, or a batch with `--on DATE`.
+  - `cubit list`, every `cubit report` and their exports take `--billed` or
+    `--unbilled`; the entries page and the reports page have a Billing field.
+  - The entries page marks the unbilled entries on screen as billed with one
+    button, labels billed entries, and the edit form sets or clears the date.
+  - `cubit check` warns about an entry billed before the day it was worked.
+
 ### Changed
 
+- **Entry files have a ninth column, `billed_on`** (FR-81). This is a change
+  to the data format. Existing files keep working as they are: they read as
+  unbilled, and each month gains the column the next time cubit writes to it.
+  What to do: update cubit on every machine that uses the data folder, since an
+  older cubit refuses a file with the new column. `cubit list` shows the
+  column as BILLED.
+- The reports page downloads through a small form (title, then PDF, CSV or
+  Markdown) instead of three links. It still sends the page's filters along.
+- Weekly and monthly summaries no longer list days and weeks with nothing
+  logged (FR-17, FR-18). A custom range over several months used to print a
+  row of zeros for every day in it; now the day and week breakdowns, on the
+  dashboard, in the reports and in every export, show only the time you worked.
 - `currency` now defaults to `NOK` rather than `EUR`. It was always a setting in
   `config.yaml` and still is; only the default changed, and existing folders are
   untouched because their `config.yaml` already names a currency.

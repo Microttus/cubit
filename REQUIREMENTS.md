@@ -58,13 +58,15 @@ Priorities: **Must** (v1 is not done without it), **Should** (v1 if time allows)
 
 | ID | Pri | Requirement |
 |---|---|---|
-| FR-17 | Must | **Weekly summary:** total hours, breakdown by project and by day. Weeks are ISO weeks (Monday start by default). |
-| FR-18 | Must | **Monthly summary:** total hours, breakdown by project, client and week. |
+| FR-17 | Must | **Weekly summary:** total hours, breakdown by project and by day. Weeks are ISO weeks (Monday start by default). The day breakdown lists only days with time logged, so a custom range over months stays short. |
+| FR-18 | Must | **Monthly summary:** total hours, breakdown by project, client and week. The week breakdown lists only weeks with time logged. |
 | FR-19 | Must | **Per-project report:** total hours, hours in selected period, budget used, remaining and %, earnings, entry list. |
 | FR-20 | Must | **Per-client report:** hours and earnings across the client's projects, with a per-project breakdown. |
 | FR-21 | Should | Any custom date range (`--from`, `--to`) and category filter on all reports. |
 | FR-22 | Should | Budget warning at a configurable threshold (default 80%) and when exceeded. |
 | FR-23 | Could | Export a report as CSV or Markdown. |
+| FR-80 | Should | **PDF export:** any report can be downloaded from the web app, or written with `--format pdf --output FILE`, as an A4 PDF with the same tables as the CSV and Markdown exports. The first page carries the Cubit logo and the date it was generated. Every page has a footer, "Made with Cubit, a product of IceCube Solutions", and a page number. Any export can be given its own title (`--title`, or the title field beside the download buttons), so a custom range reads "Hour log, Acme, January to June" rather than "Custom range"; left blank, the report keeps its own. Table headings repeat on each page, long notes wrap, and a column that is empty in every row is left out. The PDF is written without a third-party library, using the fonts built into every PDF reader. |
+| FR-81 | Should | **Billed entries:** an entry can be marked as billed on a date, and unmarked again. `cubit bill` marks entries by id or every unbilled entry matching the usual filters, after showing them and their total; `cubit unbill` unmarks by id, or a whole batch with `--on DATE`. The entries page marks the unbilled entries on screen in one step (it sends their ids, not its filters, so nothing unseen is billed) and the edit form sets or clears the date. `cubit list`, every report and their exports filter on billing (`--billed`, `--unbilled`, or the Billing field in the web app), so the unbilled hours can be exported as the hour log for an invoice made in an accounting system. Marking an entry that is already billed keeps its original date. A project report filtered on billing still measures the budget against every hour. `cubit check` warns about an entry billed before the day it was worked. Cubit does not make invoices (section 7). |
 
 ### 3.4 CLI
 
@@ -213,10 +215,10 @@ cubit-data/
 One file per month, chosen by the entry's date.
 
 ```csv
-id,date,start,end,duration_minutes,project_id,category,note
-a3f9c1,2026-09-18,09:05,10:35,90,acme-web,software-coding,Landing page layout
-b71c02,2026-09-18,,,45,internal,,Invoicing and admin
-c48d7e,2026-09-19,13:00,13:40,40,acme-web,project-management,Sprint planning call
+id,date,start,end,duration_minutes,project_id,category,note,billed_on
+a3f9c1,2026-09-18,09:05,10:35,90,acme-web,software-coding,Landing page layout,2026-09-30
+b71c02,2026-09-18,,,45,internal,,Invoicing and admin,
+c48d7e,2026-09-19,13:00,13:40,40,acme-web,project-management,Sprint planning call,
 ```
 
 | Column | Rules |
@@ -228,6 +230,13 @@ c48d7e,2026-09-19,13:00,13:40,40,acme-web,project-management,Sprint planning cal
 | `project_id` | Must match a project in `projects.yaml` |
 | `category` | Optional. Lowercase slug (`a-z`, `0-9`, `-`, max 40 characters) without the `#`. Blank means uncategorized. Should be registered on the project. |
 | `note` | Free text, standard CSV quoting |
+| `billed_on` | Optional. `YYYY-MM-DD`, the day the entry went onto an invoice (FR-81). Blank means unbilled. |
+
+**Migration note (FR-81):** `billed_on` was added as a ninth, last column. Files
+with the original eight-column header still load, with every entry unbilled,
+and a month file gains the column the next time cubit writes it; nothing needs
+converting by hand. A cubit from before FR-81 rejects a file that has the new
+column, so update cubit on every machine that shares the data folder.
 
 ### 4.2 `projects.yaml`
 
@@ -347,7 +356,7 @@ design/    # theme.css, logo, brand preview (used in M4) and menubar/ icons (use
 
 ## 7. Out of scope for v1
 
-- Invoicing, PDF exports
+- Invoicing (a PDF export of a report is in scope since FR-80; an invoice is not)
 - Multiple users, login, permissions
 - Cloud sync (the file layout should not prevent it)
 - Mobile app

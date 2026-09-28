@@ -35,7 +35,6 @@ def index():
         start=week_start,
         end=week_end,
         week_starts_on=config.week_starts_on,
-        fill_days=True,
     )
     todays = [entry for entry in week.entries if entry.date == now]
 

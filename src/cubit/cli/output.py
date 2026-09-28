@@ -135,6 +135,7 @@ def entry_rows(entries: Iterable[Entry], projects: dict[str, Project]) -> list[l
                 project.name if project else f"{entry.project_id} (unknown)",
                 display_category(entry.category),
                 entry.note,
+                format_date(entry.billed_on) if entry.billed_on else "",
             ]
         )
     return rows
@@ -149,6 +150,7 @@ ENTRY_COLUMNS = (
     Column("PROJECT"),
     Column("CATEGORY"),
     Column("NOTE"),
+    Column("BILLED"),
 )
 
 

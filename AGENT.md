@@ -29,7 +29,9 @@ src/cubit/
 │   ├── service.py     # the operations behind the commands, shared by CLI and web
 │   ├── reports.py     # pure summaries over entries and projects (FR-17 to FR-22)
 │   ├── check.py       # validating a whole folder (FR-41)
-│   ├── export.py      # a report as CSV or Markdown (FR-23)
+│   ├── export.py      # a report as CSV, Markdown or PDF (FR-23, FR-80)
+│   ├── pdf.py         # the PDF writer, stdlib only: layout, logo, footer (FR-80)
+│   ├── pdf_metrics.py # Helvetica glyph widths, for aligning and wrapping in a PDF
 │   ├── durations.py   # duration parsing and formatting (FR-27)
 │   ├── categories.py  # normalization, ranking, typo guard (FR-43 to FR-48, FR-52)
 │   ├── rates.py       # rate lookup by date and earnings (FR-14, FR-15)
@@ -87,6 +89,7 @@ cubit start acme-web -c software-coding -m "Landing page"
 cubit stop
 cubit list
 cubit report week
+cubit bill --client "Acme Corp"                     # mark unbilled hours as billed
 cubit check
 cubit web
 cubit menubar                                       # macOS only

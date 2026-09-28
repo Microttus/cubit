@@ -100,6 +100,7 @@ def check_data(storage: Storage) -> CheckReport:
 
     _check_ids(entries, problems)
     _check_times(entries, problems)
+    _check_billing(entries, problems)
 
     return CheckReport(
         problems=sorted(problems, key=_reading_order),
@@ -249,6 +250,22 @@ def _check_times(entries: list[tuple[Path, list[Entry]]], problems: list[Problem
                         "duration-mismatch",
                         f"entry {entry.id} runs {entry.start:%H:%M}-{entry.end:%H:%M} "
                         f"({spanned}m) but its duration says {entry.duration_minutes}m",
+                        path=path,
+                    )
+                )
+
+
+def _check_billing(entries: list[tuple[Path, list[Entry]]], problems: list[Problem]) -> None:
+    """Work cannot be invoiced before it was done: likely a typo (FR-81)."""
+    for path, found in entries:
+        for entry in found:
+            if entry.billed_on is not None and entry.billed_on < entry.date:
+                problems.append(
+                    Problem(
+                        WARNING,
+                        "billed-before-worked",
+                        f"entry {entry.id} is billed on {entry.billed_on.isoformat()}, "
+                        f"before the work on {entry.date.isoformat()}",
                         path=path,
                     )
                 )

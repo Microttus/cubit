@@ -54,7 +54,12 @@ ENTRY_COLUMNS = (
     "project_id",
     "category",
     "note",
+    "billed_on",
 )
+
+#: The header before ``billed_on`` was added (FR-81). Still read, so older
+#: files keep working; a month gains the column the next time it is written.
+LEGACY_ENTRY_COLUMNS = ENTRY_COLUMNS[:-1]
 
 #: Seconds to wait for another process to release the lock before giving up.
 LOCK_TIMEOUT = 10.0
@@ -553,8 +558,8 @@ class Storage:
         except StopIteration:
             return []
 
-        header = [column.strip() for column in header]
-        if tuple(header) != ENTRY_COLUMNS:
+        columns = tuple(column.strip() for column in header)
+        if columns not in (ENTRY_COLUMNS, LEGACY_ENTRY_COLUMNS):
             raise DataFileError(
                 path,
                 f"header must be {','.join(ENTRY_COLUMNS)}",
@@ -566,13 +571,13 @@ class Storage:
         for row_number, row in enumerate(reader, start=2):
             if not row or all(not cell.strip() for cell in row):
                 continue
-            if len(row) != len(ENTRY_COLUMNS):
+            if len(row) != len(columns):
                 raise DataFileError(
                     path,
-                    f"expected {len(ENTRY_COLUMNS)} columns, found {len(row)}",
+                    f"expected {len(columns)} columns, found {len(row)}",
                     row=row_number,
                 )
-            values = dict(zip(ENTRY_COLUMNS, (cell.strip() for cell in row), strict=True))
+            values = dict(zip(columns, (cell.strip() for cell in row), strict=True))
             entries.append(self._entry_from_row(path, row_number, values))
         return entries
 
@@ -587,6 +592,7 @@ class Storage:
                 project_id=values["project_id"],
                 category=values["category"] or None,
                 note=values["note"],
+                billed_on=_parse_optional_date(values.get("billed_on", "")),
             )
         except ValidationError as exc:
             raise DataFileError(path, _first_error(exc), row=row_number) from exc
@@ -612,6 +618,7 @@ def _entries_to_csv(entries: Iterable[Entry]) -> str:
                 entry.project_id,
                 entry.category or "",
                 entry.note,
+                entry.billed_on.isoformat() if entry.billed_on else "",
             ]
         )
     return stream.getvalue()
@@ -676,6 +683,15 @@ def _parse_date(value: str) -> date:
         return date.fromisoformat(value)
     except ValueError:
         raise ValueError(f"date {value!r} is not YYYY-MM-DD") from None
+
+
+def _parse_optional_date(value: str) -> date | None:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise ValueError(f"billed_on {value!r} is not YYYY-MM-DD") from None
 
 
 def _parse_time(value: str) -> time | None:

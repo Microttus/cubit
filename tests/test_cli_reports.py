@@ -25,7 +25,7 @@ def test_report_week(cli) -> None:
 
     assert _row(result.stdout, "Acme website")[:2] == ["2h55m", "2.92"]
     assert _row(result.stdout, "2026-09-18")[:2] == ["2h15m", "2.25"]
-    assert _row(result.stdout, "2026-09-16")[:2] == ["0m", "0.00"]  # a quiet day
+    assert "2026-09-16" not in result.stdout  # a day nothing was logged on
 
 
 def test_report_week_accepts_the_ways_of_naming_one(cli) -> None:
@@ -46,7 +46,7 @@ def test_report_month(cli) -> None:
 
     assert _row(result.stdout, "Acme Corp")[:2] == ["2h55m", "2.92"]
     assert _row(result.stdout, "2026-W38")[:2] == ["3h40m", "3.67"]
-    assert _row(result.stdout, "2026-W40")[:2] == ["0m", "0.00"]
+    assert "2026-W40" not in result.stdout  # a week nothing was logged in
 
 
 def test_report_month_totals_categories_across_projects(cli) -> None:

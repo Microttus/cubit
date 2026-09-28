@@ -209,6 +209,7 @@ def edit_entry(
     category: str | None | Any = UNSET,
     note: str | Any = UNSET,
     start: time | None | Any = UNSET,
+    billed_on: date | None | Any = UNSET,
     force: bool = False,
 ) -> Entry:
     """Change one entry (FR-7). Only the fields given are touched.
@@ -237,6 +238,8 @@ def edit_entry(
             changes["category"] = normalize_optional_category(category)
         if not isinstance(start, _Unset):
             changes["start"] = start
+        if not isinstance(billed_on, _Unset):
+            changes["billed_on"] = billed_on
 
         if not changes:
             return entry
@@ -275,13 +278,18 @@ def find_entries(
     project_id: str | None = None,
     client: str | None = None,
     category: str | None = None,
+    billed: bool | None = None,
 ) -> list[Entry]:
     """Entries matching the filters, in stable order (FR-6).
 
     ``client`` matches case-insensitively across all of that client's projects.
+    ``billed`` is True for billed entries only, False for unbilled ones only,
+    and None for both (FR-81).
     """
     slug = normalize_optional_category(category)
     entries = storage.load_entries(start, end, project_id=project_id, category=slug)
+    if billed is not None:
+        entries = [entry for entry in entries if entry.is_billed == billed]
     if client is None:
         return entries
 
@@ -291,6 +299,51 @@ def find_entries(
         if project.client.casefold() == client.casefold()
     }
     return [entry for entry in entries if entry.project_id in wanted]
+
+
+def set_billed(storage: Storage, entry_ids: Iterable[str], billed_on: date | None) -> list[Entry]:
+    """Mark entries as billed on a day, or as unbilled with ``None`` (FR-81).
+
+    Returns the entries that changed. Marking leaves an entry that is already
+    billed alone, so it keeps the date of the invoice it went on; unmarking
+    clears whatever date it had. Each month file is written once, under one
+    lock, so a batch lands whole or not at all per month.
+    """
+    wanted = set(entry_ids)
+    if not wanted:
+        return []
+
+    with storage.lock():
+        found: dict[str, Entry] = {}
+        months: dict[tuple[int, int], list[Entry]] = {}
+        for year, month in storage.months():
+            entries = storage.load_month(year, month)
+            if any(entry.id in wanted for entry in entries):
+                months[(year, month)] = entries
+                found.update({entry.id: entry for entry in entries if entry.id in wanted})
+
+        missing = sorted(wanted - found.keys())
+        if missing:
+            raise CubitError(
+                f"No entry with id {missing[0]!r}."
+                + (f" ({len(missing) - 1} more not found.)" if len(missing) > 1 else ""),
+                hint="Run 'cubit list' to see entry ids.",
+            )
+
+        changed: list[Entry] = []
+        for (year, month), entries in months.items():
+            updated = []
+            for entry in entries:
+                if entry.id in wanted and _needs_billing_change(entry, billed_on):
+                    entry = entry.model_copy(update={"billed_on": billed_on})
+                    changed.append(entry)
+                updated.append(entry)
+            storage.save_month(year, month, updated)
+    return sorted(changed, key=lambda entry: entry.sort_key)
+
+
+def _needs_billing_change(entry: Entry, billed_on: date | None) -> bool:
+    return entry.is_billed if billed_on is None else not entry.is_billed
 
 
 def end_of(start: time, duration_minutes: int) -> time:

@@ -30,7 +30,7 @@ from cubit.cli.output import (
     muted,
     table,
 )
-from cubit.cli.parsing import parse_day
+from cubit.cli.parsing import parse_billing, parse_day
 from cubit.core import (
     FORMATS,
     Config,
@@ -48,9 +48,11 @@ from cubit.core import (
     project_document,
     project_report,
     render,
+    render_file,
     resolve_period,
     summarize,
     summary_document,
+    with_title,
 )
 
 app = typer.Typer(
@@ -59,6 +61,7 @@ app = typer.Typer(
 
 FORMAT_HELP = f"Write the report as one of {', '.join(FORMATS)} instead of a table."
 OUTPUT_HELP = "Write to this file instead of the terminal."
+TITLE_HELP = "Heading for the exported file, e.g. 'Hour log, Acme, January to June'."
 RANGE_HELP_FROM = "Override the period: first date (YYYY-MM-DD)."
 RANGE_HELP_TO = "Override the period: last date (YYYY-MM-DD)."
 CATEGORY_HELP = "Only this category, without the #."
@@ -69,22 +72,24 @@ def _load(ctx: typer.Context) -> tuple[Storage, Config]:
     return storage, storage.load_config()
 
 
-def _export(document: Document, fmt: str, output: str | None) -> bool:
-    """Write the report out in another format, if one was asked for (FR-23).
+def _export(document: Document, fmt: str, output: str | None, title: str | None) -> bool:
+    """Write the report out in another format, if one was asked for (FR-23, FR-80).
 
     Returns True when it handled the output, so the caller skips the tables.
     """
     if fmt == "text":
         return False
 
-    text = render(document, fmt)
+    document = with_title(document, title)
     if output:
         path = Path(output)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text, encoding="utf-8")
+        path.write_bytes(render_file(document, fmt, generated=date.today()))
         echo(muted(f"Wrote {path}"))
+    elif fmt == "pdf":
+        raise CubitError("A PDF cannot be shown in the terminal.", hint="Add --output report.pdf.")
     else:
-        typer.echo(text, nl=False)
+        typer.echo(render(document, fmt), nl=False)
     return True
 
 
@@ -117,8 +122,8 @@ def _totals(summary: Summary, currency: str) -> str:
     )
 
 
-def _section(title: str, lines, currency: str, *, skip_empty: bool = True) -> None:
-    if skip_empty and not any(line.amount.minutes for line in lines):
+def _section(title: str, lines, currency: str) -> None:
+    if not any(line.amount.minutes for line in lines):
         return
     rendered = breakdown_table(lines, title, currency)
     if rendered:
@@ -171,6 +176,9 @@ def week(
         "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
     ),
     output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
+    export_title: str | None = typer.Option(None, "--title", help=TITLE_HELP),
+    billed: bool = typer.Option(False, "--billed", help="Only billed hours."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only unbilled hours."),
 ) -> None:
     """Weekly summary: hours by project and by day."""
     # FR-17, FR-21, FR-54, FR-60.
@@ -179,12 +187,17 @@ def week(
     start, end = custom or resolve_period("week", when, week_starts_on=config.week_starts_on)
 
     summary = summarize(
-        find_entries(storage, start=start, end=end, category=category),
+        find_entries(
+            storage,
+            start=start,
+            end=end,
+            category=category,
+            billed=parse_billing(billed, unbilled),
+        ),
         storage.load_projects_map(),
         start=start,
         end=end,
         week_starts_on=config.week_starts_on,
-        fill_days=True,
     )
 
     title = "Custom range" if custom else f"Week {start.isocalendar().week}, {start.year}"
@@ -192,6 +205,7 @@ def week(
         summary_document(summary, kind="week", label=title, currency=config.currency),
         fmt,
         output,
+        export_title,
     ):
         return
 
@@ -201,7 +215,7 @@ def week(
         echo()
 
     _section("PROJECT", summary.by_project, config.currency)
-    _section("DAY", summary.by_day, config.currency, skip_empty=False)
+    _section("DAY", summary.by_day, config.currency)
     _section("CATEGORY", summary.by_category, config.currency)
     if by_category:
         _project_categories(summary, storage, config.currency)
@@ -225,6 +239,9 @@ def month(
         "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
     ),
     output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
+    export_title: str | None = typer.Option(None, "--title", help=TITLE_HELP),
+    billed: bool = typer.Option(False, "--billed", help="Only billed hours."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only unbilled hours."),
 ) -> None:
     """Monthly summary: hours by project, client and week."""
     # FR-18, FR-21, FR-54, FR-60.
@@ -233,7 +250,13 @@ def month(
     start, end = custom or resolve_period("month", when, week_starts_on=config.week_starts_on)
 
     summary = summarize(
-        find_entries(storage, start=start, end=end, category=category),
+        find_entries(
+            storage,
+            start=start,
+            end=end,
+            category=category,
+            billed=parse_billing(billed, unbilled),
+        ),
         storage.load_projects_map(),
         start=start,
         end=end,
@@ -245,6 +268,7 @@ def month(
         summary_document(summary, kind="month", label=title, currency=config.currency),
         fmt,
         output,
+        export_title,
     ):
         return
 
@@ -255,7 +279,7 @@ def month(
 
     _section("PROJECT", summary.by_project, config.currency)
     _section("CLIENT", summary.by_client, config.currency)
-    _section("WEEK", summary.by_week, config.currency, skip_empty=False)
+    _section("WEEK", summary.by_week, config.currency)
     _section("CATEGORY", summary.by_category, config.currency)
     if by_category:
         _project_categories(summary, storage, config.currency)
@@ -275,6 +299,9 @@ def project(
         "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
     ),
     output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
+    export_title: str | None = typer.Option(None, "--title", help=TITLE_HELP),
+    billed: bool = typer.Option(False, "--billed", help="Only billed hours."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only unbilled hours."),
 ) -> None:
     """One project: hours, budget, earnings and categories."""
     # FR-19, FR-21, FR-22, FR-49.
@@ -292,6 +319,7 @@ def project(
         start=start,
         end=end,
         warning_percent=config.budget_warning_percent,
+        billed=parse_billing(billed, unbilled),
     )
 
     if _export(
@@ -303,6 +331,7 @@ def project(
         ),
         fmt,
         output,
+        export_title,
     ):
         return
 
@@ -350,6 +379,9 @@ def client(
         "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
     ),
     output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
+    export_title: str | None = typer.Option(None, "--title", help=TITLE_HELP),
+    billed: bool = typer.Option(False, "--billed", help="Only billed hours."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only unbilled hours."),
 ) -> None:
     """One client: hours and earnings across their projects."""
     # FR-20, FR-21.
@@ -359,7 +391,7 @@ def client(
 
     report = client_report(
         name,
-        find_entries(storage, category=category),
+        find_entries(storage, category=category, billed=parse_billing(billed, unbilled)),
         storage.load_projects_map(),
         start=start,
         end=end,
@@ -370,7 +402,7 @@ def client(
             hint="Run 'cubit project list --all' to see the clients you have.",
         )
 
-    if _export(client_document(report, currency=config.currency), fmt, output):
+    if _export(client_document(report, currency=config.currency), fmt, output, export_title):
         return
 
     echo(heading(report.client))
@@ -395,6 +427,9 @@ def category(
         "text", "--format", "-f", help=FORMAT_HELP, autocompletion=complete_format
     ),
     output: str | None = typer.Option(None, "--output", "-o", help=OUTPUT_HELP),
+    export_title: str | None = typer.Option(None, "--title", help=TITLE_HELP),
+    billed: bool = typer.Option(False, "--billed", help="Only billed hours."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only unbilled hours."),
 ) -> None:
     """One category across every project that uses it."""
     # FR-60, FR-61.
@@ -404,13 +439,13 @@ def category(
 
     report = category_report(
         name,
-        find_entries(storage),
+        find_entries(storage, billed=parse_billing(billed, unbilled)),
         storage.load_projects_map(),
         start=start,
         end=end,
     )
 
-    if _export(category_document(report, currency=config.currency), fmt, output):
+    if _export(category_document(report, currency=config.currency), fmt, output, export_title):
         return
 
     echo(heading(display_category(report.category)))

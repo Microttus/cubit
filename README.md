@@ -15,7 +15,8 @@ Built for IceCube Solutions.
 - Web app with its own IceCube-inspired look: dark by default, light "ice" theme available
 - Reports: weekly, monthly, per project (hours vs. budget), per client, per category
 - Plain-text storage: CSV for time entries, YAML for projects. No database
-- Reports export as CSV or Markdown
+- Reports export as PDF (with the Cubit logo), CSV or Markdown
+- Entries can be marked as billed, so the unbilled hours are one filter away when you invoice
 - `cubit check` validates the whole data folder in one pass
 - Optional macOS menu bar app: start and stop the timer without leaving what you are doing
 - Local-first; the data folder is laid out so syncing can be added later
@@ -40,6 +41,8 @@ cubit report week                  # this week, by project and by day
 cubit report month last            # last month, by project, client and week
 cubit report project acme-web      # hours vs. budget, earnings, categories
 cubit report month --format markdown -o september.md
+cubit report project acme-web --entries --format pdf -o acme-hours.pdf \
+  --title "Hour log, Acme website"
 
 cubit check                        # validate the data folder
 cubit web                          # opens http://127.0.0.1:8000
@@ -57,6 +60,7 @@ cubit web                          # opens http://127.0.0.1:8000
 | `cubit add <project> <duration> [-c category] [--date D] [-m note]` | Add an entry manually |
 | `cubit list [filters]` | List entries |
 | `cubit edit <id>` / `cubit rm <id>` | Change or delete an entry |
+| `cubit bill [ids \| filters] [--on D]` / `cubit unbill <ids \| --on D>` | Mark entries as billed, or undo it |
 | `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
 | `cubit report week\|month\|project\|client\|category` | Summaries |
 | `cubit check` | Validate the data folder |
@@ -76,6 +80,21 @@ Tab-completion covers commands, project ids, categories and clients. Install it
 with, for example, `cubit completion zsh >> ~/.zshrc` (bash, zsh, fish and
 PowerShell are supported).
 
+### Billing
+
+Cubit does not make invoices; your accounting system does. What it does is
+keep track of which hours have been invoiced, so the next hour log holds only
+the new ones. A typical month-end with Fiken, or any other accounting system:
+
+1. Reports, pick the client or project, set **Billing** to *Unbilled*, and
+   download the PDF (`cubit report client "Acme Corp" --unbilled --format pdf
+   -o acme.pdf`).
+2. Make the invoice in the accounting system and attach the PDF.
+3. Mark those hours as billed: the button on the entries page, filtered the
+   same way, or `cubit bill --client "Acme Corp"`.
+
+`cubit unbill --on 2026-09-30` undoes a batch marked on that day.
+
 ### Reports
 
 `cubit report week` and `cubit report month` take `this` (the default), `last`,
@@ -84,8 +103,14 @@ accepts `--from` / `--to` for a custom range and `-c` to narrow to one category;
 `--by-category` breaks each project down as well.
 
 Any report can be written out with `--format csv` or `--format markdown`, to
-the terminal or to `--output FILE`; the web app offers the same two as
-downloads. An export shows exactly what the report shows, filters included.
+the terminal or to `--output FILE`, or with `--format pdf --output FILE` as a
+PDF with the Cubit logo, ready to hand over as an hour log. `--title` gives the
+export a heading of your own. The web app offers all three as downloads, with a
+title field beside the buttons. An export shows exactly what the report shows, filters
+included.
+
+Summaries list only the days and weeks you logged time on, so a report over a
+long period has no rows of zeros for the days you did not work.
 
 Weeks are ISO weeks (Monday to Sunday) unless `week_starts_on: sunday` says
 otherwise. A project's budget is measured against every hour ever logged against

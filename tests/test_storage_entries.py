@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from cubit.core import DataFileError, Entry, Storage
-from cubit.core.storage import ENTRY_COLUMNS
+from cubit.core.storage import ENTRY_COLUMNS, LEGACY_ENTRY_COLUMNS
 
 
 def _entry(entry_id: str, day: date, **kwargs) -> Entry:
@@ -33,6 +33,7 @@ def test_columns_are_the_documented_ones() -> None:
         "project_id",
         "category",
         "note",
+        "billed_on",
     )
 
 
@@ -185,9 +186,47 @@ def test_new_entry_id_is_six_hex_and_unused(storage: Storage) -> None:
 def test_round_trip_keeps_the_file_byte_identical(storage: Storage) -> None:
     """Rewriting untouched data must not churn the file (FR-42)."""
     path = storage.month_path(2026, 9)
+    storage.save_month(2026, 9, storage.load_month(2026, 9))
     before = path.read_text(encoding="utf-8")
     storage.save_month(2026, 9, storage.load_month(2026, 9))
     assert path.read_text(encoding="utf-8") == before
+
+
+def test_a_file_from_before_billing_still_loads(storage: Storage) -> None:
+    """FR-81: the sample files have no billed_on column, and read as unbilled."""
+    path = storage.month_path(2026, 9)
+    assert path.read_text(encoding="utf-8").startswith(",".join(LEGACY_ENTRY_COLUMNS) + "\n")
+    entries = storage.load_month(2026, 9)
+    assert entries and not any(entry.is_billed for entry in entries)
+
+
+def test_writing_a_month_adds_the_billed_column_and_keeps_the_rest(storage: Storage) -> None:
+    path = storage.month_path(2026, 9)
+    before = storage.load_month(2026, 9)
+    storage.save_month(2026, 9, before)
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    assert lines[0] == ",".join(ENTRY_COLUMNS)
+    assert all(line.endswith(",") for line in lines[1:])  # blank: not billed yet
+    assert storage.load_month(2026, 9) == before
+
+
+def test_a_billed_date_is_written_and_read_back(storage: Storage) -> None:
+    storage.add_entry(_entry("000002", date(2026, 9, 21), billed_on=date(2026, 9, 30)))
+    assert storage.find_entry("000002").billed_on == date(2026, 9, 30)
+    assert ",2026-09-30\n" in storage.month_path(2026, 9).read_text(encoding="utf-8")
+
+
+def test_a_bad_billed_date_names_the_file_and_row(storage: Storage) -> None:
+    path = storage.month_path(2026, 9)
+    path.write_text(
+        ",".join(ENTRY_COLUMNS) + "\n111111,2026-09-20,,,60,acme-web,,Note,30.09.2026\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(DataFileError) as caught:
+        storage.load_month(2026, 9)
+    assert "row 2" in str(caught.value)
+    assert "billed_on" in str(caught.value)
 
 
 def test_a_note_with_a_comma_is_quoted_on_write(storage: Storage) -> None:
@@ -222,7 +261,7 @@ def test_a_bad_header_names_the_file_and_row(storage: Storage) -> None:
 )
 def test_a_bad_row_names_the_file_and_row(storage: Storage, row: str, message: str) -> None:
     path = storage.month_path(2026, 9)
-    path.write_text(f"{','.join(ENTRY_COLUMNS)}\n{row}\n", encoding="utf-8")
+    path.write_text(f"{','.join(LEGACY_ENTRY_COLUMNS)}\n{row}\n", encoding="utf-8")
 
     with pytest.raises(DataFileError) as caught:
         storage.load_month(2026, 9)
@@ -235,7 +274,7 @@ def test_a_bad_row_names_the_file_and_row(storage: Storage, row: str, message: s
 def test_a_bad_row_is_never_overwritten(storage: Storage) -> None:
     """FR-38: invalid data is never overwritten or dropped."""
     path = storage.month_path(2026, 9)
-    broken = f"{','.join(ENTRY_COLUMNS)}\n111111,2026-09-20,,,zero,acme-web,,Note\n"
+    broken = f"{','.join(LEGACY_ENTRY_COLUMNS)}\n111111,2026-09-20,,,zero,acme-web,,Note\n"
     path.write_text(broken, encoding="utf-8")
 
     with pytest.raises(DataFileError):
@@ -248,7 +287,7 @@ def test_blank_lines_and_a_byte_order_mark_are_tolerated(storage: Storage) -> No
     """Hand-edited files, and files saved by a spreadsheet, still load."""
     path = storage.month_path(2026, 9)
     path.write_text(
-        "﻿" + ",".join(ENTRY_COLUMNS) + "\n\n111111,2026-09-20,,,60,acme-web,,Note\n\n",
+        "﻿" + ",".join(LEGACY_ENTRY_COLUMNS) + "\n\n111111,2026-09-20,,,60,acme-web,,Note\n\n",
         encoding="utf-8",
     )
     assert [entry.id for entry in storage.load_month(2026, 9)] == ["111111"]

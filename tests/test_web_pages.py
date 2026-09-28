@@ -6,7 +6,7 @@ from datetime import date
 from decimal import Decimal
 
 from cubit.core import ProjectStatus, Storage
-from helpers import active_tab, row_for, text_of
+from helpers import active_tab, forms_in, row_for, text_of
 
 # --------------------------------------------------------------- dashboard
 
@@ -484,21 +484,45 @@ def test_the_active_page_is_marked_in_the_navigation(web) -> None:
 # ------------------------------------------------------------------ export
 
 
-def test_the_reports_page_offers_both_downloads(web) -> None:
-    """FR-23."""
-    html = text_of(web.get("/reports/?view=month"))
-    assert "/reports/export?" in html
-    assert "format=csv" in html
-    assert "format=markdown" in html
+def _download_form(html: str) -> str:
+    return next(form for form in forms_in(html) if "/reports/export" in form)
+
+
+def test_the_reports_page_offers_every_download(web) -> None:
+    """FR-23, FR-80."""
+    form = _download_form(text_of(web.get("/reports/?view=month")))
+    assert 'method="get"' in form
+    for fmt in ["pdf", "csv", "markdown"]:
+        assert f'name="format" value="{fmt}"' in form
+    assert 'name="title"' in form
 
 
 def test_a_download_carries_the_filters_of_the_page(web) -> None:
-    """The link keeps the query string, so the file matches what is on screen."""
-    html = text_of(web.get("/reports/?view=month&from=2026-09-01&to=2026-09-30"))
-    link = html.split('href="')[1:]
-    export = next(part for part in link if part.startswith("/reports/export"))
-    assert "from=2026-09-01" in export
-    assert "to=2026-09-30" in export
+    """The form sends the query string back, so the file matches what is on screen."""
+    form = _download_form(text_of(web.get("/reports/?view=month&from=2026-09-01&to=2026-09-30")))
+    assert 'name="view" value="month"' in form
+    assert 'name="from" value="2026-09-01"' in form
+    assert 'name="to" value="2026-09-30"' in form
+
+
+def test_a_download_can_be_given_a_title(web) -> None:
+    """FR-80: the title replaces "Custom range", in the file and its name."""
+    response = web.get(
+        "/reports/export?view=month&from=2026-01-01&to=2026-09-30"
+        "&title=Hour+log,+Acme,+2026&format=markdown"
+    )
+    assert text_of(response).startswith("# Hour log, Acme, 2026")
+    assert "cubit-month-hour-log-acme-2026.md" in response.headers["Content-Disposition"]
+
+
+def test_a_title_s_punctuation_collapses_in_the_file_name(web) -> None:
+    response = web.get("/reports/export?view=month&title=Hour+log+%E2%80%93+Acme&format=csv")
+    assert 'filename="cubit-month-hour-log-acme.csv"' in response.headers["Content-Disposition"]
+
+
+def test_a_blank_title_keeps_the_report_s_own(web) -> None:
+    response = web.get("/reports/export?view=project&project=acme-web&title=++&format=markdown")
+    assert text_of(response).startswith("# Acme website (acme-web)")
 
 
 def test_downloading_a_month_as_csv(web) -> None:
@@ -533,9 +557,9 @@ def test_downloading_a_client_and_a_category(web) -> None:
 
 
 def test_an_unknown_download_format_is_refused(web) -> None:
-    response = web.raw.get("/reports/export?view=month&format=pdf")
+    response = web.raw.get("/reports/export?view=month&format=xlsx")
     assert response.status_code == 400
-    assert "csv, markdown" in text_of(response)
+    assert "csv, markdown, pdf" in text_of(response)
 
 
 def test_downloading_a_category_nobody_picked(web) -> None:

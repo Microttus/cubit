@@ -1,4 +1,4 @@
-"""The entries page: list with filters, add, edit and delete (FR-32)."""
+"""The entries page: list with filters, add, edit, delete and billing (FR-32, FR-81)."""
 
 from __future__ import annotations
 
@@ -10,8 +10,10 @@ from cubit.core import (
     add_manual_entry,
     edit_entry,
     find_entries,
+    format_duration,
     month_bounds,
     remove_entry,
+    set_billed,
     total_amount,
 )
 from cubit.web import forms
@@ -33,6 +35,7 @@ def _filters() -> dict[str, object]:
         "project_id": forms.optional(request.args, "project"),
         "client": forms.optional(request.args, "client"),
         "category": forms.optional(request.args, "category"),
+        "billed": forms.billing(request.args),
     }
 
 
@@ -42,12 +45,18 @@ def index():
     selected = _filters()
     found = find_entries(store, **selected)
     projects = store.load_projects()
+    unbilled = [entry for entry in found if not entry.is_billed]
 
     return render_template(
         "entries.html",
         title="Entries",
         entries=list(reversed(found)),
         total=total_amount(found, store.load_projects_map()),
+        unbilled=unbilled,
+        unbilled_total=total_amount(unbilled, store.load_projects_map()),
+        billed=[entry for entry in found if entry.is_billed],
+        billing=forms.text(request.args, "billing", "all"),
+        today=today(),
         projects_by_id=store.load_projects_map(),
         projects=projects,
         clients=sorted({project.client for project in projects if project.client}),
@@ -124,6 +133,7 @@ def update(entry_id: str):
         category=forms.optional(request.form, "category"),
         note=forms.text(request.form, "note"),
         start=start,
+        billed_on=forms.day(request.form, "billed_on"),
         force=forms.flag(request.form, "force"),
     )
     flash(f"Updated {entry.id}.", "success")
@@ -139,6 +149,35 @@ def delete(entry_id: str):
         abort(404)
     flash(f"Deleted {entry.id}.", "info")
     return redirect(request.referrer or url_for("entries.index"))
+
+
+@bp.post("/billed")
+def mark_billed():
+    """Mark the entries on screen as billed on a day (FR-81).
+
+    The page sends the ids it showed rather than its filters, so an entry
+    logged in another window meanwhile is never billed without being seen.
+    """
+    changed = set_billed(
+        storage(),
+        forms.many(request.form, "entry_id"),
+        forms.day(request.form, "billed_on", default=today()),
+    )
+    minutes = sum(entry.duration_minutes for entry in changed)
+    flash(f"Marked {_count(changed)} ({format_duration(minutes)}) as billed.", "success")
+    return redirect(request.referrer or url_for("entries.index"))
+
+
+@bp.post("/unbilled")
+def mark_unbilled():
+    """Undo a billing, for entries marked by mistake (FR-81)."""
+    changed = set_billed(storage(), forms.many(request.form, "entry_id"), None)
+    flash(f"Marked {_count(changed)} as unbilled.", "info")
+    return redirect(request.referrer or url_for("entries.index"))
+
+
+def _count(entries: list) -> str:
+    return "1 entry" if len(entries) == 1 else f"{len(entries)} entries"
 
 
 @bp.app_template_global()

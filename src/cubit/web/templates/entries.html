@@ -47,6 +47,14 @@
           {% for name in categories %}<option value="{{ name }}">{% endfor %}
         </datalist>
       </div>
+      <div class="field field-narrow">
+        <label for="filter-billing">Billing</label>
+        <select id="filter-billing" name="billing">
+          <option value="all" {% if billing == 'all' %}selected{% endif %}>All</option>
+          <option value="unbilled" {% if billing == 'unbilled' %}selected{% endif %}>Unbilled</option>
+          <option value="billed" {% if billing == 'billed' %}selected{% endif %}>Billed</option>
+        </select>
+      </div>
       <div class="row-end">
         <button class="btn btn-primary" type="submit">Filter</button>
         <a class="btn btn-quiet" href="{{ url_for('entries.index', all=1) }}">Everything</a>
@@ -60,7 +68,37 @@
       {{ total.minutes | duration }} ({{ total.minutes | hours }} h) ·
       {{ total | earned(currency) }}
       {%- if not show_all and filters.start %} · {{ filters.start | day }} to {{ filters.end | day }}{% endif %}
+      {%- if billed and unbilled %} · {{ unbilled | length }} unbilled ({{ unbilled_total.minutes | duration }}){% endif %}
     </p>
+
+    {# FR-81: after invoicing in the accounting system, mark what went on the invoice. #}
+    {% if unbilled %}
+      <form class="row" method="post" action="{{ url_for('entries.mark_billed') }}"
+            onsubmit="return confirm('Mark {{ unbilled | length }} unbilled entries as billed?')">
+        {{ csrf_input() }}
+        {% for entry in unbilled %}<input type="hidden" name="entry_id" value="{{ entry.id }}">{% endfor %}
+        <div class="field field-narrow">
+          <label for="billed-on">Billed on</label>
+          <input id="billed-on" type="date" name="billed_on" value="{{ today | day }}" required>
+        </div>
+        <div class="row-end">
+          <button class="btn btn-primary" type="submit">
+            Mark {{ unbilled | length }} unbilled {{ 'entry' if unbilled | length == 1 else 'entries' }}
+            ({{ unbilled_total.minutes | duration }}) as billed
+          </button>
+        </div>
+      </form>
+    {% endif %}
+    {% if billing == 'billed' and billed %}
+      <form class="row" method="post" action="{{ url_for('entries.mark_unbilled') }}"
+            onsubmit="return confirm('Mark {{ billed | length }} entries as unbilled again?')">
+        {{ csrf_input() }}
+        {% for entry in billed %}<input type="hidden" name="entry_id" value="{{ entry.id }}">{% endfor %}
+        <div class="row-end">
+          <button class="btn btn-quiet" type="submit">Mark these {{ billed | length }} as unbilled</button>
+        </div>
+      </form>
+    {% endif %}
     {{ entry_rows(entries, projects_by_id) }}
   </div>
 {% endblock %}

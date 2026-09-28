@@ -56,6 +56,20 @@
         </div>
       </div>
 
+      {% if entry %}
+        {# FR-81: blank means unbilled. Changing a billed entry no longer matches its invoice. #}
+        <div class="row">
+          <div class="field field-narrow">
+            <label for="billed_on">Billed on</label>
+            <input id="billed_on" type="date" name="billed_on" value="{{ entry.billed_on | day }}">
+          </div>
+          {% if entry.billed_on %}
+            <p class="muted">This entry is on an invoice. If you change its time, the invoice
+              no longer matches. Clear the date to mark it unbilled.</p>
+          {% endif %}
+        </div>
+      {% endif %}
+
       <div class="row">
         <label class="muted">
           <input type="checkbox" name="force" value="1" style="width: auto"> Allow an archived project

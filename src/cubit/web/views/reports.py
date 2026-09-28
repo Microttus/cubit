@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from flask import Blueprint, Response, render_template, request, url_for
+import re
+
+from flask import Blueprint, Response, render_template, request
 
 from cubit.core import (
     CubitError,
@@ -13,10 +15,11 @@ from cubit.core import (
     find_entries,
     project_document,
     project_report,
-    render,
+    render_file,
     resolve_period,
     summarize,
     summary_document,
+    with_title,
 )
 from cubit.web import forms
 from cubit.web.views._shared import storage, today
@@ -43,6 +46,7 @@ def index():
         "clients": sorted({project.client for project in projects if project.client}),
         "categories": sorted({name for project in projects for name in project.categories}),
         "today": today(),
+        "billing": forms.text(request.args, "billing", "all"),
     }
 
     if kind in {"week", "month"}:
@@ -80,12 +84,13 @@ def _summary(store, config, kind: str) -> dict:
     category = forms.optional(request.args, "category")
     return {
         "summary": summarize(
-            find_entries(store, start=start, end=end, category=category),
+            find_entries(
+                store, start=start, end=end, category=category, billed=forms.billing(request.args)
+            ),
             store.load_projects_map(),
             start=start,
             end=end,
             week_starts_on=config.week_starts_on,
-            fill_days=(kind == "week"),
         ),
         "period_label": label,
         "start": start,
@@ -113,6 +118,7 @@ def _project(store, config, projects) -> dict:
         start=start,
         end=end,
         warning_percent=config.budget_warning_percent,
+        billed=forms.billing(request.args),
     )
     return {"report": report, "chosen": chosen, "start": start, "end": end}
 
@@ -129,7 +135,11 @@ def _client(store) -> dict:
     return {
         "report": client_report(
             chosen,
-            find_entries(store, category=forms.optional(request.args, "category")),
+            find_entries(
+                store,
+                category=forms.optional(request.args, "category"),
+                billed=forms.billing(request.args),
+            ),
             store.load_projects_map(),
             start=start,
             end=end,
@@ -151,7 +161,7 @@ def _category(store) -> dict:
     return {
         "report": category_report(
             chosen,
-            find_entries(store),
+            find_entries(store, billed=forms.billing(request.args)),
             store.load_projects_map(),
             start=start,
             end=end,
@@ -164,24 +174,28 @@ def _category(store) -> dict:
 
 
 @bp.app_template_global()
-def export_url(fmt: str) -> str:
-    """The download link for the report currently on screen (FR-23)."""
-    args = dict(request.args)
-    args["format"] = fmt
+def export_fields() -> list[tuple[str, str]]:
+    """The query string of the report on screen, for the download form (FR-23).
+
+    The form sends these back as hidden fields, so a download always matches
+    what is displayed. The title and the format come from the form itself.
+    """
+    args = {key: value for key, value in request.args.items() if key not in {"title", "format"}}
     args.setdefault("view", "week")
-    return url_for("reports.export", **args)
+    return list(args.items())
 
 
 #: What a downloaded report is called and served as.
 EXPORTS = {
     "csv": ("csv", "text/csv"),
     "markdown": ("md", "text/markdown"),
+    "pdf": ("pdf", "application/pdf"),
 }
 
 
 @bp.get("/export")
 def export():
-    """Download the report on screen as CSV or Markdown (FR-23).
+    """Download the report on screen as CSV, Markdown or PDF (FR-23, FR-80).
 
     The query string is the same one the page uses, so the link can simply
     carry it over and the download always matches what is displayed.
@@ -202,11 +216,12 @@ def export():
     document = _document(store, config, kind)
     if document is None:
         raise CubitError("There is nothing to export yet.", hint="Pick a report first.")
+    document = with_title(document, forms.optional(request.args, "title"))
 
     extension, media_type = EXPORTS[fmt]
     name = f"cubit-{kind}-{_slug(document.title)}.{extension}"
     return Response(
-        render(document, fmt),
+        render_file(document, fmt, generated=today()),
         mimetype=media_type,
         headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
@@ -249,5 +264,4 @@ def _document(store, config, kind: str):
 
 def _slug(title: str) -> str:
     """A filename-safe version of the report's title."""
-    kept = [char.lower() if char.isalnum() else "-" for char in title]
-    return "".join(kept).strip("-").replace("--", "-") or "report"
+    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "report"

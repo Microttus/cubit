@@ -1,4 +1,4 @@
-"""Timer and entry commands: start, stop, status, cancel, add, list, edit, rm.
+"""Timer and entry commands: start, stop, status, cancel, add, list, edit, rm, bill, unbill.
 
 Thin by design: parse the options, call ``cubit.core``, print the result.
 """
@@ -18,14 +18,16 @@ from cubit.cli.output import (
     entry_rows,
     format_date,
     format_duration,
+    format_earnings,
     format_total,
     muted,
     table,
 )
-from cubit.cli.parsing import parse_clock, parse_day, parse_minutes
-from cubit.cli.prompts import choose_category, confirm_category
+from cubit.cli.parsing import parse_billing, parse_clock, parse_day, parse_minutes
+from cubit.cli.prompts import choose_category, confirm_category, interactive
 from cubit.core import (
     UNSET,
+    CubitError,
     add_manual_entry,
     cancel_timer,
     display_category,
@@ -34,9 +36,11 @@ from cubit.core import (
     find_entries,
     remove_entry,
     running_timer,
+    set_billed,
     start_timer,
     stop_timer,
     suggest_categories,
+    total_amount,
 )
 
 CATEGORY_HELP = "Category for this entry, without the # (quote it if you write one)."
@@ -52,6 +56,8 @@ def register(app: typer.Typer) -> None:
     app.command("list")(list_entries)
     app.command("edit")(edit)
     app.command("rm")(remove)
+    app.command("bill")(bill)
+    app.command("unbill")(unbill)
 
 
 def _resolve_category(
@@ -204,6 +210,8 @@ def list_entries(
     ),
     show_all: bool = typer.Option(False, "--all", help="Every entry, not just this month."),
     limit: int | None = typer.Option(None, "--limit", help="Show at most this many."),
+    billed: bool = typer.Option(False, "--billed", help="Only entries already billed."),
+    unbilled: bool = typer.Option(False, "--unbilled", help="Only entries not billed yet."),
 ) -> None:
     """List entries, with filters."""
     # FR-6.
@@ -224,6 +232,7 @@ def list_entries(
         project_id=project,
         client=client,
         category=category,
+        billed=parse_billing(billed, unbilled),
     )
     if limit is not None:
         entries = entries[-limit:]
@@ -324,3 +333,111 @@ def remove(
 
     deleted = remove_entry(storage, entry_id)
     echo(f"Deleted {deleted.id} ({format_duration(deleted.duration_minutes)}).")
+
+
+def bill(
+    ctx: typer.Context,
+    entry_ids: list[str] | None = typer.Argument(
+        None, help="Ids of the entries to mark. Leave out to use the filters instead."
+    ),
+    since: str | None = typer.Option(None, "--from", help="First date (YYYY-MM-DD)."),
+    until: str | None = typer.Option(None, "--to", help="Last date (YYYY-MM-DD)."),
+    project: str | None = typer.Option(
+        None, "--project", "-p", help="Only this project id.", autocompletion=complete_project
+    ),
+    client: str | None = typer.Option(None, "--client", help="Only this client's projects."),
+    category: str | None = typer.Option(
+        None, "--category", "-c", help="Only this category.", autocompletion=complete_category
+    ),
+    on: str | None = typer.Option(None, "--on", help="The billing date (default: today)."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask."),
+) -> None:
+    """Mark entries as billed, by id or every unbilled entry matching the filters."""
+    # FR-81.
+    storage = get_context(ctx).require_folder()
+    billed_on = parse_day(on) or date.today()
+    filtered = any([since, until, project, client, category])
+    if entry_ids and filtered:
+        raise typer.BadParameter("Give entry ids or filters, not both.")
+
+    if entry_ids:
+        entries = []
+        for entry_id in dict.fromkeys(entry_ids):
+            entry = storage.find_entry(entry_id)
+            if entry is None:
+                raise CubitError(
+                    f"No entry with id {entry_id!r}.", hint="Run 'cubit list' to see entry ids."
+                )
+            if not entry.is_billed:
+                entries.append(entry)
+    else:
+        entries = find_entries(
+            storage,
+            start=parse_day(since),
+            end=parse_day(until),
+            project_id=project,
+            client=client,
+            category=category,
+            billed=False,
+        )
+
+    if not entries:
+        echo("Nothing to bill: no unbilled entries match.")
+        raise typer.Exit()
+
+    projects = storage.load_projects_map()
+    config = storage.load_config()
+    amount = total_amount(entries, projects)
+    counted = "1 entry" if len(entries) == 1 else f"{len(entries)} entries"
+    summary = (
+        f"{counted}, {format_total(amount.minutes)}, {format_earnings(amount, config.currency)}"
+    )
+    if not yes:
+        if not interactive():
+            raise CubitError(
+                f"Would mark {summary} as billed.", hint="Add --yes to go ahead without asking."
+            )
+        echo(table(ENTRY_COLUMNS, entry_rows(entries, projects)))
+        echo()
+        typer.confirm(
+            f"Mark {summary} as billed on {format_date(billed_on)}?", default=False, abort=True
+        )
+
+    set_billed(storage, [entry.id for entry in entries], billed_on)
+    echo(f"Marked {accent(summary)} as billed on {format_date(billed_on)}.")
+
+
+def unbill(
+    ctx: typer.Context,
+    entry_ids: list[str] | None = typer.Argument(None, help="Ids of the entries to unmark."),
+    on: str | None = typer.Option(
+        None, "--on", help="Unmark every entry billed on this date, to undo a whole batch."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Do not ask."),
+) -> None:
+    """Mark billed entries as unbilled again."""
+    # FR-81.
+    storage = get_context(ctx).require_folder()
+    if bool(entry_ids) == bool(on):
+        raise typer.BadParameter("Give either entry ids or --on DATE.")
+
+    if on:
+        day = parse_day(on)
+        ids = [entry.id for entry in find_entries(storage, billed=True) if entry.billed_on == day]
+        if ids and not yes:
+            if not interactive():
+                raise CubitError(
+                    f"Would unmark {len(ids)} entries billed on {format_date(day)}.",
+                    hint="Add --yes to go ahead without asking.",
+                )
+            typer.confirm(
+                f"Mark the {len(ids)} entries billed on {format_date(day)} as unbilled?",
+                default=False,
+                abort=True,
+            )
+    else:
+        ids = list(entry_ids or [])
+
+    changed = set_billed(storage, ids, None)
+    counted = "1 entry" if len(changed) == 1 else f"{len(changed)} entries"
+    echo(f"Marked {counted} as unbilled.")

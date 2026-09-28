@@ -1,4 +1,4 @@
-"""Turning a report into CSV or Markdown (FR-23).
+"""Turning a report into CSV, Markdown or PDF (FR-23, FR-80).
 
 A report is a handful of named tables; the CLI draws them with padding, the web
 app with ``<table>``, and this module writes them as text you can send someone
@@ -11,7 +11,7 @@ from __future__ import annotations
 import csv
 import io
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from decimal import Decimal
 
@@ -19,6 +19,7 @@ from cubit.core.categories import display_category
 from cubit.core.durations import format_duration, format_hours
 from cubit.core.errors import CubitError
 from cubit.core.models import Entry, Project
+from cubit.core.pdf import to_pdf
 from cubit.core.reports import (
     CategoryReport,
     ClientReport,
@@ -28,7 +29,7 @@ from cubit.core.reports import (
 )
 
 #: The formats ``--format`` accepts.
-FORMATS = ("text", "csv", "markdown")
+FORMATS = ("text", "csv", "markdown", "pdf")
 
 
 @dataclass(frozen=True)
@@ -162,6 +163,16 @@ def category_document(report: CategoryReport, *, currency: str) -> Document:
     )
 
 
+def with_title(document: Document, title: str | None) -> Document:
+    """The document under a title of the user's choosing, when one was given.
+
+    A report over a custom range is otherwise just "Custom range", which is no
+    heading for an hour log handed to a client (FR-80).
+    """
+    chosen = (title or "").strip()
+    return replace(document, title=chosen) if chosen else document
+
+
 def to_csv(document: Document) -> str:
     """The document as CSV.
 
@@ -197,7 +208,7 @@ def to_markdown(document: Document) -> str:
 
 
 def render(document: Document, fmt: str) -> str:
-    """The document in the format named, for ``--format``."""
+    """The document in the text format named, for ``--format``."""
     if fmt == "csv":
         return to_csv(document)
     if fmt == "markdown":
@@ -206,6 +217,16 @@ def render(document: Document, fmt: str) -> str:
         f"Unknown format {fmt!r}.",
         hint=f"Use one of {', '.join(FORMATS)}.",
     )
+
+
+def render_file(document: Document, fmt: str, *, generated: date) -> bytes:
+    """The document as the contents of a file, in any format but ``text``.
+
+    ``generated`` is the date printed on a PDF; the text formats ignore it.
+    """
+    if fmt == "pdf":
+        return to_pdf(document, generated=generated)
+    return render(document, fmt).encode("utf-8")
 
 
 def _project_rows(report: ProjectReport, currency: str) -> list[list[str]]:

@@ -70,18 +70,38 @@
         </div>
       {% endif %}
 
+      {# FR-81: "unbilled" is the hour log to attach to the next invoice. #}
+      <div class="field field-narrow">
+        <label for="billing">Billing</label>
+        <select id="billing" name="billing">
+          <option value="all" {% if billing == 'all' %}selected{% endif %}>All hours</option>
+          <option value="unbilled" {% if billing == 'unbilled' %}selected{% endif %}>Unbilled</option>
+          <option value="billed" {% if billing == 'billed' %}selected{% endif %}>Billed</option>
+        </select>
+      </div>
+
       <div class="row-end">
         <button class="btn btn-primary" type="submit">Show</button>
         <a class="btn btn-quiet" href="{{ url_for('reports.index', view=kind) }}">Reset</a>
       </div>
     </form>
 
-    {# FR-23: the same query string, so a download matches what is on screen. #}
-    <p class="muted">
-      Download this report as
-      <a href="{{ export_url('csv') }}">CSV</a> or
-      <a href="{{ export_url('markdown') }}">Markdown</a>.
-    </p>
+    {# FR-23, FR-80: the same query string, so a download matches what is on screen. #}
+    <form class="row" method="get" action="{{ url_for('reports.export') }}">
+      {% for name, value in export_fields() %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+      {% endfor %}
+      <div class="field">
+        <label for="export-title">Title on the download</label>
+        <input id="export-title" name="title" maxlength="200"
+               placeholder="Optional, e.g. Hour log, Acme, January to June">
+      </div>
+      <div class="row-end">
+        <button class="btn btn-primary" type="submit" name="format" value="pdf">PDF</button>
+        <button class="btn" type="submit" name="format" value="csv">CSV</button>
+        <button class="btn" type="submit" name="format" value="markdown">Markdown</button>
+      </div>
+    </form>
   </div>
 
   {% if kind in ('week', 'month') %}
@@ -91,6 +111,7 @@
       <p class="mono">{{ summary.total.minutes | hours }} hours ·
         {{ summary.total | earned(currency) }}</p>
       {% if category %}<p class="muted">filtered to #{{ category }}</p>{% endif %}
+      {% if billing != 'all' %}<p class="muted">{{ billing }} hours only</p>{% endif %}
     </div>
 
     {% if summary.by_project %}

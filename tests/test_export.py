@@ -70,7 +70,7 @@ def summary(entries, projects):
 
 
 def test_the_formats_are_the_documented_ones() -> None:
-    assert list(FORMATS) == ["text", "csv", "markdown"]
+    assert list(FORMATS) == ["text", "csv", "markdown", "pdf"]
 
 
 def test_csv_keeps_its_sections_apart(summary, projects) -> None:
@@ -218,8 +218,8 @@ def test_render_picks_the_format(summary) -> None:
 def test_render_rejects_an_unknown_format(summary) -> None:
     document = summary_document(summary, kind="week", label="W", currency="EUR")
     with pytest.raises(CubitError) as caught:
-        render(document, "pdf")
-    assert "text, csv, markdown" in (caught.value.hint or "")
+        render(document, "xlsx")
+    assert "text, csv, markdown, pdf" in (caught.value.hint or "")
 
 
 def test_an_empty_report_still_exports(projects) -> None:
