@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cubit"
-version = "0.1.0"
+version = "0.2.0"
 description = "Time logging for a one-person company: a CLI and a local web app on plain-text files."
 readme = "README.md"
 license = { file = "LICENSE" }

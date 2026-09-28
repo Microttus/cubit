@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: 0.1.0, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
+> **Status: 0.2.0, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
 
 ## Features
 
