@@ -24,6 +24,7 @@ Built for IceCube Solutions.
 ## Quick start
 
 ```bash
+git clone https://github.com/Microttus/cubit.git && cd cubit
 python -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt

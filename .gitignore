@@ -232,3 +232,6 @@ files*.zip
 # tools/make_icns.sh turns into the committed .icns.
 .venv-build/
 *.iconset/
+
+# Claude Code local settings
+.claude/settings.local.json
