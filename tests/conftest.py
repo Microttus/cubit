@@ -3,8 +3,10 @@ folder in ``tests/fixtures/`` into ``tmp_path`` (AGENT.md)."""
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
+import time
 from pathlib import Path
 
 import pytest
@@ -16,6 +18,21 @@ from cubit.core import Storage
 
 FIXTURES = Path(__file__).parent / "fixtures"
 SAMPLE_DATA = FIXTURES / "sample-data"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _oslo_time():
+    """Run in Europe/Oslo, whatever the machine's zone: the timer and menu bar
+    tests build Oslo times and read them back as local time."""
+    previous = os.environ.get("TZ")
+    os.environ["TZ"] = "Europe/Oslo"
+    time.tzset()
+    yield
+    if previous is None:
+        os.environ.pop("TZ", None)
+    else:
+        os.environ["TZ"] = previous
+    time.tzset()
 
 
 @pytest.fixture
