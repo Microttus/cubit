@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: 0.3.0, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
+> **Status: 0.3.1, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
 
 ## Features
 
@@ -281,6 +281,11 @@ command. With no data folder there yet, it clones your data into place:
 ```bash
 cubit sync setup git@github.com:you/cubit-data.git
 ```
+
+If that computer already has an empty data folder (the app creates one the first
+time it opens), setup replaces it with the remote's data. If it has data of its
+own as well, setup stops and tells you to move the folder aside first, so two
+histories are never merged by accident.
 
 From then on, `cubit sync` before and after a work session is all it takes. It
 saves your changes, brings in the other computer's, and uploads yours. The

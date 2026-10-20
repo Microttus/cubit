@@ -81,6 +81,18 @@ def _has_commits(storage: Storage) -> bool:
     return _git(storage, "rev-parse", "--verify", "HEAD", check=False).returncode == 0
 
 
+def _remote_has_data(storage: Storage, remote: str) -> bool:
+    """True if the remote already holds a ``main`` branch."""
+    found = _git(storage, "ls-remote", "--exit-code", "--heads", remote, "main", check=False)
+    return found.returncode == 0
+
+
+def _unfinished_git_work(storage: Storage) -> bool:
+    """A merge or rebase somebody started by hand and never finished."""
+    git_dir = storage.data_dir / ".git"
+    return any((git_dir / name).exists() for name in ("rebase-merge", "rebase-apply", "MERGE_HEAD"))
+
+
 def _commit_all(storage: Storage, message: str) -> bool:
     """Commit every change; False if there was nothing to commit."""
     _git(storage, "add", "--all")
@@ -124,6 +136,23 @@ def setup_sync(storage: Storage, remote: str | None = None) -> SetupReport:
         _git(storage, "init", "--initial-branch", "main")
 
     storage.init()
+
+    if remote is not None and remote_url(storage) is None and _remote_has_data(storage, remote):
+        # The remote already holds the data, so this folder must not start a second history.
+        if _has_commits(storage) or not storage.is_starter:
+            raise CubitError(
+                f"{remote} already holds cubit data, and so does {storage.data_dir}.",
+                hint=(
+                    "Move this folder aside (mv ~/cubit-data ~/cubit-data-old) and run "
+                    "'cubit sync setup' again to fetch the remote's data."
+                ),
+            )
+        _git(storage, "remote", "add", REMOTE, remote)
+        _git(storage, "fetch", REMOTE, "main")
+        _git(storage, "checkout", "--force", "-B", "main", f"{REMOTE}/main")
+        storage.ensure_gitignore()
+        return SetupReport(cloned=True, initialised=initialised, pushed=False)
+
     storage.ensure_gitignore()
 
     if remote is not None:
@@ -140,7 +169,7 @@ def setup_sync(storage: Storage, remote: str | None = None) -> SetupReport:
 
     pushed = False
     if remote_url(storage) is not None and _has_commits(storage):
-        _git(storage, "push", "--set-upstream", REMOTE, "HEAD")
+        _git(storage, "push", "--set-upstream", REMOTE, _branch(storage))
         pushed = True
     return SetupReport(cloned=cloned, initialised=initialised, pushed=pushed)
 
@@ -152,6 +181,11 @@ def run_sync(storage: Storage, message: str | None = None) -> SyncReport:
             "This data folder is not set up for syncing.",
             hint="Run 'cubit sync setup <git-url>' first.",
         )
+    if _unfinished_git_work(storage) or _branch(storage) == "HEAD":
+        raise CubitError(
+            f"A git merge or rebase in {storage.data_dir} was never finished.",
+            hint="Finish it, or undo it with 'git rebase --abort', then run 'cubit sync' again.",
+        )
     timer = storage.read_timer()
     if timer is not None:
         raise CubitError(
@@ -161,6 +195,7 @@ def run_sync(storage: Storage, message: str | None = None) -> SyncReport:
 
     with storage.lock():
         storage.ensure_gitignore()
+        _git(storage, "rm", "-r", "--cached", "--ignore-unmatch", "--quiet", ".DS_Store")
         committed = _commit_all(storage, message or _default_message())
 
         branch = _branch(storage)

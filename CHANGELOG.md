@@ -10,6 +10,19 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-20
+
+### Fixed
+
+- `cubit sync setup` on a computer with an empty data folder (the app creates
+  one on first launch) no longer pushes starter files over the remote's data and
+  hits a conflict: it adopts the remote's data. If both sides hold data, it
+  stops and says how to proceed.
+- `cubit sync` refuses while a merge or rebase done by hand is unfinished,
+  instead of committing conflict markers into your files.
+- `.DS_Store` is kept out of the synced repo, and removed from it on the next
+  sync if it was already there.
+
 ## [0.3.0] - 2026-10-20
 
 ### Added
@@ -252,7 +265,8 @@ both over the same plain-text files.
   categories (FR-55) is only half done — a category can be unregistered, but
   nothing rewrites the entries that use it.
 
-[Unreleased]: https://github.com/Microttus/cubit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Microttus/cubit/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Microttus/cubit/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/Microttus/cubit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Microttus/cubit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Microttus/cubit/releases/tag/v0.1.0

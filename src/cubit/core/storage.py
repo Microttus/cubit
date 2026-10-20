@@ -74,6 +74,9 @@ theme: dark                   # dark | light | auto
 menubar_title: time           # none | time | project-time (macOS menu bar)
 """
 
+#: What ``cubit sync`` keeps out of git: runtime state, and Finder's litter.
+GITIGNORE_LINES = (".state/", ".DS_Store")
+
 _PROJECTS_TEMPLATE = """\
 # Cubit projects. Edit by hand; comments are kept.
 # Entries reference projects by id, so an id never changes.
@@ -180,14 +183,25 @@ class Storage:
         return created
 
     def ensure_gitignore(self) -> bool:
-        """Keep ``.state/`` out of git (FR-82). False if it already was."""
+        """Keep ``.state/`` and Finder's ``.DS_Store`` out of git (FR-82).
+
+        False if both were already ignored.
+        """
         path = self.data_dir / ".gitignore"
         current = path.read_text(encoding="utf-8") if path.exists() else ""
-        if ".state/" in current.splitlines():
+        present = current.splitlines()
+        missing = [line for line in GITIGNORE_LINES if line not in present]
+        if not missing:
             return False
         separator = "" if not current or current.endswith("\n") else "\n"
-        self._write_atomic(path, f"{current}{separator}.state/\n")
+        self._write_atomic(path, current + separator + "".join(f"{line}\n" for line in missing))
         return True
+
+    @property
+    def is_starter(self) -> bool:
+        """True for a folder nobody has logged anything in yet: no entries, no projects."""
+        has_entries = self.entries_dir.exists() and any(self.entries_dir.glob("*.csv"))
+        return not has_entries and not self.load_projects()
 
     @contextmanager
     def lock(self) -> Iterator[None]:

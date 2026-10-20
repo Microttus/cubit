@@ -51,7 +51,7 @@ def _log(store: Storage, text: str) -> None:
 
 
 def test_setup_ignores_state_and_pushes(laptop: Storage, remote: str) -> None:
-    assert (laptop.data_dir / ".gitignore").read_text(encoding="utf-8") == ".state/\n"
+    assert (laptop.data_dir / ".gitignore").read_text(encoding="utf-8") == ".state/\n.DS_Store\n"
     tracked = subprocess.run(
         ["git", "-C", str(laptop.data_dir), "ls-files"], capture_output=True, text=True
     ).stdout.split()
@@ -192,3 +192,50 @@ def test_cli_sync_without_setup_fails_politely(cli_empty) -> None:
     result = cli_empty("sync")
     assert result.exit_code == EXIT_ERROR
     assert "cubit sync setup" in result.output
+
+
+def test_a_starter_folder_adopts_the_remote_instead_of_clashing(
+    laptop: Storage, remote: str, tmp_path: Path
+) -> None:
+    """The app creates an empty data folder on first launch; setup must not push it."""
+    _log(laptop, "real\n")
+    run_sync(laptop)
+
+    desktop = Storage(tmp_path / "desktop")
+    desktop.init()
+    report = setup_sync(desktop, remote)
+
+    assert report.cloned
+    assert "real" in (desktop.entries_dir / "2026-10.csv").read_text(encoding="utf-8")
+    assert run_sync(desktop).pulled == 0
+
+
+def test_two_folders_with_data_are_not_merged_blindly(
+    laptop: Storage, remote: str, tmp_path: Path
+) -> None:
+    desktop = Storage(tmp_path / "desktop")
+    desktop.init()
+    _log(desktop, "mine\n")
+
+    with pytest.raises(CubitError, match="already holds cubit data") as raised:
+        setup_sync(desktop, remote)
+    assert "Move this folder aside" in (raised.value.hint or "")
+    assert "mine" in (desktop.entries_dir / "2026-10.csv").read_text(encoding="utf-8")
+
+
+def test_an_unfinished_rebase_blocks_sync(laptop: Storage, remote: str, tmp_path: Path) -> None:
+    (laptop.data_dir / ".git" / "rebase-merge").mkdir()
+    with pytest.raises(CubitError, match="never finished"):
+        run_sync(laptop)
+
+
+def test_a_tracked_ds_store_is_dropped(laptop: Storage) -> None:
+    (laptop.data_dir / ".DS_Store").write_bytes(b"x")
+    subprocess.run(["git", "-C", str(laptop.data_dir), "add", "--force", ".DS_Store"], check=True)
+    subprocess.run(["git", "-C", str(laptop.data_dir), "commit", "-qm", "oops"], check=True)
+
+    assert run_sync(laptop).committed
+    tracked = subprocess.run(
+        ["git", "-C", str(laptop.data_dir), "ls-files"], capture_output=True, text=True
+    ).stdout.split()
+    assert ".DS_Store" not in tracked
