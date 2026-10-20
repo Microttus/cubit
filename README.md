@@ -19,7 +19,7 @@ Built for IceCube Solutions.
 - Entries can be marked as billed, so the unbilled hours are one filter away when you invoice
 - `cubit check` validates the whole data folder in one pass
 - Optional macOS menu bar app: start and stop the timer without leaving what you are doing
-- Local-first; the data folder is laid out so syncing can be added later
+- Local-first; `cubit sync` keeps the data folder in step between computers through a private git repo
 
 ## Quick start
 
@@ -65,6 +65,8 @@ cubit web                          # opens http://127.0.0.1:8000
 | `cubit project add\|list\|show\|edit\|rate\|archive\|unarchive\|rm\|category` | Manage projects, rates and categories |
 | `cubit report week\|month\|project\|client\|category` | Summaries |
 | `cubit check` | Validate the data folder |
+| `cubit sync` | Commit, pull and push the data folder through git (see [Using two computers](#using-two-computers)) |
+| `cubit sync setup [git-url]` | Start syncing, or fetch the data on a new computer |
 | `cubit completion <shell>` | Print a tab-completion script |
 | `cubit web` | Start the local web app |
 | `cubit menubar` | Start the macOS menu bar app *(macOS only)* |
@@ -260,6 +262,34 @@ Checked 3 projects and 41 entries across 4 monthly files.
 Errors exit non-zero; warnings on their own do not, unless you pass `--strict`.
 It never writes anything.
 
+## Using two computers
+
+Cubit syncs the data folder through a private git repository. It is built for
+one computer at a time: sync when you are done, and sync again before you start
+on the other one.
+
+On the computer that has your data, create an empty **private** repository
+(on GitHub, say) and run:
+
+```bash
+cubit sync setup git@github.com:you/cubit-data.git
+```
+
+On the second computer, install the same cubit version and run the same
+command. With no data folder there yet, it clones your data into place:
+
+```bash
+cubit sync setup git@github.com:you/cubit-data.git
+```
+
+From then on, `cubit sync` before and after a work session is all it takes. It
+saves your changes, brings in the other computer's, and uploads yours. The
+running timer lives in `.state/`, which is never synced, so `cubit sync` refuses
+while a timer is running. If both computers edited the same lines, cubit leaves
+everything as it was and tells you how to resolve it with git. Git needs to be
+installed and able to reach the repository without a password prompt (an SSH key
+or a credential helper).
+
 ## Data
 
 Everything lives in one folder (default `~/cubit-data`, override with `--data-dir` or `CUBIT_DATA_DIR`):
@@ -271,7 +301,7 @@ cubit-data/
 ├── entries/
 │   ├── 2026-08.csv      # one file per month
 │   └── 2026-09.csv
-└── .state/              # not for syncing: runtime state, not your data
+└── .state/              # not for syncing (kept out of git): runtime state, not your data
     ├── timer.json       # the currently running timer
     ├── cubit.lock       # held while a write is in flight
     └── secret_key       # signs the web app's session cookie

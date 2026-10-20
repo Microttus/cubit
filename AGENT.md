@@ -29,6 +29,7 @@ src/cubit/
 │   ├── service.py     # the operations behind the commands, shared by CLI and web
 │   ├── reports.py     # pure summaries over entries and projects (FR-17 to FR-22)
 │   ├── check.py       # validating a whole folder (FR-41)
+│   ├── sync.py        # syncing the data folder through git (FR-82)
 │   ├── export.py      # a report as CSV, Markdown or PDF (FR-23, FR-80)
 │   ├── pdf.py         # the PDF writer, stdlib only: layout, logo, footer (FR-80)
 │   ├── pdf_metrics.py # Helvetica glyph widths, for aligning and wrapping in a PDF
@@ -43,6 +44,7 @@ src/cubit/
 │   ├── projects.py    # project add|list|show|edit|rate|archive|unarchive|rm|category
 │   ├── reports.py     # report week|month|project|client|category
 │   ├── check.py       # the check command
+│   ├── sync.py        # sync, sync setup
 │   ├── completion.py  # tab-completion values and script (FR-29)
 │   ├── prompts.py     # category confirmation and suggestions (FR-45, FR-52, FR-53)
 │   ├── output.py      # aligned tables, totals, NO_COLOR (FR-28, FR-59)
@@ -91,6 +93,8 @@ cubit list
 cubit report week
 cubit bill --client "Acme Corp"                     # mark unbilled hours as billed
 cubit check
+cubit sync setup <git-url>   # sync the data folder between computers
+cubit sync
 cubit web
 cubit menubar                                       # macOS only
 ./build_macos_app.sh                                # Cubit.app + dmg (macOS only)

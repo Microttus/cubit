@@ -10,6 +10,16 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
+### Added
+
+- **`cubit sync`** keeps the data folder in step between computers through a
+  private git remote: it saves your changes, brings in the other computer's,
+  and uploads, in one command (FR-82). `cubit sync setup <git-url>` starts it,
+  and on a computer with no data folder it clones the data into place. The
+  running timer stays on the computer it was started on, so sync refuses while
+  one is running. If both computers edited the same lines, nothing is touched
+  and cubit says how to resolve it.
+
 ## [0.2.0] - 2026-09-28
 
 The macOS menu bar app and an installable `Cubit.app`, a settings page, and

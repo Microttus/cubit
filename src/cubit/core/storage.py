@@ -179,6 +179,16 @@ class Storage:
                 self._write_atomic(self.projects_path, _PROJECTS_TEMPLATE)
         return created
 
+    def ensure_gitignore(self) -> bool:
+        """Keep ``.state/`` out of git (FR-82). False if it already was."""
+        path = self.data_dir / ".gitignore"
+        current = path.read_text(encoding="utf-8") if path.exists() else ""
+        if ".state/" in current.splitlines():
+            return False
+        separator = "" if not current or current.endswith("\n") else "\n"
+        self._write_atomic(path, f"{current}{separator}.state/\n")
+        return True
+
     @contextmanager
     def lock(self) -> Iterator[None]:
         """Hold the data folder lock (FR-39). Reentrant within one Storage.
