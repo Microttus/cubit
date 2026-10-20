@@ -10,6 +10,8 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
 ### Added
 
 - **`cubit sync`** keeps the data folder in step between computers through a
@@ -250,6 +252,7 @@ both over the same plain-text files.
   categories (FR-55) is only half done — a category can be unregistered, but
   nothing rewrites the entries that use it.
 
-[Unreleased]: https://github.com/Microttus/cubit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Microttus/cubit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Microttus/cubit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Microttus/cubit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Microttus/cubit/releases/tag/v0.1.0

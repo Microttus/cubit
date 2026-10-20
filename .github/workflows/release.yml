@@ -1,0 +1,46 @@
+name: Release
+
+# Pushing a tag like v0.3.0 tests the code, builds Cubit.app on macOS and
+# attaches the .dmg and .zip to a GitHub Release. The app is signed ad-hoc only,
+# so a downloaded copy needs right-click > Open the first time (FR-79).
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Check the tag matches the version
+        run: |
+          version="$(python -c "import re,pathlib; print(re.search(r'^version\s*=\s*\"([^\"]+)\"', pathlib.Path('pyproject.toml').read_text(), re.M).group(1))")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match pyproject.toml version ${version}" >&2
+            exit 1
+          fi
+      - run: pip install -r requirements-dev.txt && pip install -e ".[menubar]"
+      - run: ruff check .
+      - run: pytest
+      - name: Build Cubit.app
+        run: ./build_macos_app.sh
+      - name: Pull this version's notes out of the changelog
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="## [${version}]" 'index($0, v) == 1 {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md > notes.md
+          test -s notes.md
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.dmg dist/*.zip \
+            --title "Cubit ${GITHUB_REF_NAME#v}" \
+            --notes-file notes.md
