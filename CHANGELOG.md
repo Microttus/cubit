@@ -10,6 +10,12 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
+### Fixed
+
+- The menu bar's check for a running web app no longer goes through the system
+  proxy, which could stall it on macOS. When the web app fails to start, the
+  message now says whether it was still running or had exited.
+
 ## [0.3.2] - 2026-10-30
 
 ### Added

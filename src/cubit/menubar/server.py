@@ -32,6 +32,10 @@ STARTUP_TIMEOUT = 10.0
 
 log = logging.getLogger(__name__)
 
+#: Talks to localhost directly. ``urlopen`` honours the system proxy settings,
+#: which on a macOS runner can swallow or stall a request to 127.0.0.1.
+_opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
 
 def health_url(port: int, host: str = "127.0.0.1") -> str:
     return f"http://{host}:{port}/healthz"
@@ -48,7 +52,7 @@ def is_cubit_running(port: int, *, timeout: float = PROBE_TIMEOUT) -> bool:
     JSON but not cubit all mean the same thing here: we cannot use it.
     """
     try:
-        with urllib.request.urlopen(health_url(port), timeout=timeout) as response:
+        with _opener.open(health_url(port), timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, ValueError, OSError):
         return False
@@ -106,6 +110,13 @@ class WebServer:
 
             errors.seek(0)
             self.startup_error = errors.read().decode("utf-8", errors="replace").strip()
+            if not self.startup_error:
+                code = self.process.poll()
+                self.startup_error = (
+                    "it was still running but not answering"
+                    if code is None
+                    else f"it exited with status {code} and printed nothing"
+                )
 
         log.error(
             "the web app did not answer on port %s%s",
