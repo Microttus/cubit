@@ -51,12 +51,19 @@ def is_cubit_running(port: int, *, timeout: float = PROBE_TIMEOUT) -> bool:
     A closed port, a timeout, something that is not JSON and something that is
     JSON but not cubit all mean the same thing here: we cannot use it.
     """
+    return _probe(port, timeout) is None
+
+
+def _probe(port: int, timeout: float) -> str | None:
+    """None when cubit answers on ``port``, otherwise why it does not."""
     try:
         with _opener.open(health_url(port), timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
-        return False
-    return isinstance(payload, dict) and payload.get("app") == HEALTH_APP
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError) as error:
+        return f"{type(error).__name__}: {error}"
+    if isinstance(payload, dict) and payload.get("app") == HEALTH_APP:
+        return None
+    return f"something else answered: {payload!r}"[:200]
 
 
 @dataclass
@@ -96,8 +103,8 @@ class WebServer:
             try:
                 self.process = subprocess.Popen(
                     command,
-                    stdout=subprocess.DEVNULL,
-                    stderr=errors,
+                    stdout=errors,
+                    stderr=subprocess.STDOUT,
                     start_new_session=True,
                 )
             except OSError:
@@ -117,6 +124,7 @@ class WebServer:
                     if code is None
                     else f"it exited with status {code} and printed nothing"
                 )
+            self.startup_error += f" (probe: {_probe(self.port, 2.0)})"
 
         log.error(
             "the web app did not answer on port %s%s",
