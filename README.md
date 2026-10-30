@@ -4,7 +4,7 @@ A small time-logging tool for a one-person company. Log hours per project from t
 
 Built for IceCube Solutions.
 
-> **Status: 0.3.1, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
+> **Status: 0.3.2, feature complete for v1.** Everything in [REQUIREMENTS.md](REQUIREMENTS.md) marked *Must* or *Should* is built and tested, from either the CLI or the web app. See [CHANGELOG.md](CHANGELOG.md) for what is in it.
 
 ## Features
 
@@ -294,6 +294,11 @@ while a timer is running. If both computers edited the same lines, cubit leaves
 everything as it was and tells you how to resolve it with git. Git needs to be
 installed and able to reach the repository without a password prompt (an SSH key
 or a credential helper).
+
+In the web app, the **Sync** button in the header does the same, and cubit syncs
+by itself: before you add an entry or start a timer, to bring in the other
+computer's work, and after you add an entry or stop a timer, to upload it. If a
+sync fails, the entry is still saved and a warning tells you why.
 
 ## Data
 

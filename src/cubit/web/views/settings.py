@@ -10,9 +10,9 @@ from __future__ import annotations
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from pydantic import ValidationError
 
-from cubit.core import Config, CubitError
+from cubit.core import Config, CubitError, run_sync
 from cubit.web import forms
-from cubit.web.views._shared import storage
+from cubit.web.views._shared import describe_sync, storage
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
 
@@ -77,6 +77,13 @@ def set_theme():
     store = storage()
     config = store.load_config()
     store.save_config(config.model_copy(update={"theme": wanted}))
+    return redirect(request.referrer or url_for("dashboard.index"))
+
+
+@bp.post("/sync")
+def sync():
+    """The header's sync button: the same sync as ``cubit sync`` (FR-82)."""
+    flash(describe_sync(run_sync(storage())), "success")
     return redirect(request.referrer or url_for("dashboard.index"))
 
 

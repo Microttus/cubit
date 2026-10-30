@@ -58,7 +58,8 @@
 .nav a:hover { color: var(--color-text); background: var(--color-surface-raised); }
 .nav a.is-active { color: var(--color-accent); background: var(--color-accent-soft); }
 
-.theme-toggle button {
+.theme-toggle button,
+.sync-button button {
   font-family: var(--font-mono);
   font-size: 0.85rem;
   background: none;
@@ -68,7 +69,8 @@
   padding: var(--space-2) var(--space-3);
   cursor: pointer;
 }
-.theme-toggle button:hover { color: var(--color-accent); border-color: var(--color-accent-line); }
+.theme-toggle button:hover,
+.sync-button button:hover { color: var(--color-accent); border-color: var(--color-accent-line); }
 
 /* ------------------------------------------------------------------- cards */
 
@@ -187,6 +189,7 @@ input:focus, select:focus, textarea:focus {
 }
 .flash-success { border-color: var(--color-success); color: var(--color-success); }
 .flash-danger { border-color: var(--color-danger); color: var(--color-danger); }
+.flash-warning { border-color: var(--color-warning); color: var(--color-warning); }
 .flash-info { border-color: var(--color-accent-line); color: var(--color-accent); }
 
 /* ------------------------------------------------------------------- budget */

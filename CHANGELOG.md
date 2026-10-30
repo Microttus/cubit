@@ -10,6 +10,15 @@ breaking change and is listed under **Changed** with what to do about it.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-30
+
+### Added
+
+- The web app has a **Sync** button in the header, and syncs by itself: before
+  an entry is added or a timer started, to bring in the other computer's work, and
+  after an entry is added or a timer stopped, to upload it (FR-82). If a sync
+  fails, the entry is still saved and a warning says why.
+
 ## [0.3.1] - 2026-10-20
 
 ### Fixed

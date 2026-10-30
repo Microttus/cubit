@@ -4,9 +4,19 @@ from __future__ import annotations
 
 from datetime import date
 
-from flask import current_app
+from flask import current_app, flash
 
-from cubit.core import Entry, Project, Storage, active_projects, suggest_categories
+from cubit.core import (
+    CubitError,
+    Entry,
+    Project,
+    Storage,
+    SyncReport,
+    active_projects,
+    is_configured,
+    run_sync,
+    suggest_categories,
+)
 
 
 def storage() -> Storage:
@@ -39,3 +49,50 @@ def category_suggestions(
 
 def today() -> date:
     return date.today()
+
+
+def describe_sync(report: SyncReport) -> str:
+    """What a sync did, in a sentence for the flash message."""
+    parts = []
+    if report.committed:
+        parts.append("saved your changes")
+    if report.pulled:
+        parts.append(f"brought in {report.pulled} {'change' if report.pulled == 1 else 'changes'}")
+    if report.pushed:
+        parts.append("uploaded")
+    if not parts:
+        return "Already in sync."
+    return f"Synced: {', '.join(parts)}."
+
+
+def _try_sync(store: Storage, failure: str) -> SyncReport | None:
+    """Run a sync that must never stop the request it belongs to.
+
+    A folder that does not sync, or a running timer (which does not sync), is
+    not worth a message each time, so those return None quietly. A sync that
+    fails becomes a warning that starts with ``failure``.
+    """
+    if not is_configured(store) or store.read_timer() is not None:
+        return None
+    try:
+        return run_sync(store)
+    except CubitError as error:
+        detail = error.message if not error.hint else f"{error.message} {error.hint}"
+        flash(f"{failure} {detail}", "warning")
+        return None
+
+
+def sync_before_change(store: Storage) -> None:
+    """Bring in the other computer's changes before logging or starting (FR-82).
+
+    Only a failure is reported: the work goes ahead on what is here, and the
+    sync after it tries again.
+    """
+    _try_sync(store, "Could not sync first, so this is on top of what is here.")
+
+
+def sync_after_change(store: Storage) -> None:
+    """Upload what was just logged (FR-82). The entry is already saved."""
+    report = _try_sync(store, "Saved, but the sync failed.")
+    if report is not None and (report.pulled or report.pushed):
+        flash(describe_sync(report), "info")

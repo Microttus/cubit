@@ -194,6 +194,129 @@ def test_cli_sync_without_setup_fails_politely(cli_empty) -> None:
     assert "cubit sync setup" in result.output
 
 
+# --- the web app (FR-82) ------------------------------------------------------
+
+
+class _Browser:
+    """A minimal test client that sends the CSRF token the page renders."""
+
+    def __init__(self, folder: Path) -> None:
+        from cubit.web import create_app
+
+        app = create_app(folder)
+        app.config.update(TESTING=True)
+        self.client = app.test_client()
+
+    def get(self, path: str):
+        return self.client.get(path)
+
+    def post(self, path: str, data: dict | None = None):
+        import re
+
+        html = self.client.get("/").get_data(as_text=True)
+        token = re.search(r'name="csrf_token" value="([^"]+)"', html).group(1)
+        return self.client.post(
+            path, data={"csrf_token": token, **(data or {})}, follow_redirects=True
+        )
+
+
+def _remote_subjects(remote: str) -> list[str]:
+    return subprocess.run(
+        ["git", "--git-dir", remote, "log", "--format=%s"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+
+
+def _add_entry(browser: _Browser):
+    return browser.post(
+        "/entries/",
+        {"project_id": "acme-web", "duration": "30m", "date": "2026-10-05", "note": "x"},
+    )
+
+
+@pytest.fixture
+def synced_folder(sample_dir: Path, remote: str) -> Path:
+    setup_sync(Storage(sample_dir), remote)
+    return sample_dir
+
+
+def test_web_sync_button_is_hidden_without_a_repository(sample_dir: Path) -> None:
+    assert "Sync</button>" not in _Browser(sample_dir).get("/").get_data(as_text=True)
+
+
+def test_web_sync_button_shows_and_syncs(synced_folder: Path, remote: str) -> None:
+    browser = _Browser(synced_folder)
+    assert "Sync</button>" in browser.get("/").get_data(as_text=True)
+
+    (synced_folder / "projects.yaml").write_text(
+        (synced_folder / "projects.yaml").read_text(encoding="utf-8") + "\n# edited\n",
+        encoding="utf-8",
+    )
+    html = browser.post("/settings/sync").get_data(as_text=True)
+    assert "Synced: saved your changes, uploaded." in html
+    assert "Already in sync." in browser.post("/settings/sync").get_data(as_text=True)
+
+
+def test_adding_an_entry_syncs_it(synced_folder: Path, remote: str) -> None:
+    before = len(_remote_subjects(remote))
+    html = _add_entry(_Browser(synced_folder)).get_data(as_text=True)
+
+    assert "Logged 30 minutes" in html
+    assert "uploaded" in html
+    assert len(_remote_subjects(remote)) == before + 1
+
+
+def test_adding_an_entry_still_saves_when_the_sync_fails(synced_folder: Path) -> None:
+    subprocess.run(
+        ["git", "-C", str(synced_folder), "remote", "set-url", "origin", "/nowhere/at/all"],
+        check=True,
+    )
+    html = _add_entry(_Browser(synced_folder)).get_data(as_text=True)
+
+    assert "Logged 30 minutes" in html
+    assert "Saved, but the sync failed." in html
+    assert any(e.note == "x" for e in Storage(synced_folder).load_all_entries())
+
+
+def test_adding_an_entry_without_sync_set_up_says_nothing_extra(sample_dir: Path) -> None:
+    html = _add_entry(_Browser(sample_dir)).get_data(as_text=True)
+
+    assert "Logged 30 minutes" in html
+    assert "sync" not in html.lower().replace("sync-button", "")
+
+
+def test_adding_an_entry_brings_in_the_other_computers_work_first(
+    synced_folder: Path, remote: str, tmp_path: Path
+) -> None:
+    other = Storage(tmp_path / "desktop")
+    setup_sync(other, remote)
+    _log(
+        other,
+        "id,date,start,end,duration_minutes,project_id,category,note,billed_on\n"
+        "a1b2c3,2026-10-04,,,45,acme-web,,from the desktop,\n",
+    )
+    run_sync(other)
+
+    html = _add_entry(_Browser(synced_folder)).get_data(as_text=True)
+
+    notes = {entry.note for entry in Storage(synced_folder).load_all_entries()}
+    assert {"from the desktop", "x"} <= notes
+    assert "Logged 30 minutes" in html
+
+
+def test_a_failed_sync_before_adding_still_saves_the_entry(synced_folder: Path) -> None:
+    subprocess.run(
+        ["git", "-C", str(synced_folder), "remote", "set-url", "origin", "/nowhere/at/all"],
+        check=True,
+    )
+    html = _add_entry(_Browser(synced_folder)).get_data(as_text=True)
+
+    assert "Could not sync first" in html
+    assert "Logged 30 minutes" in html
+
+
 def test_a_starter_folder_adopts_the_remote_instead_of_clashing(
     laptop: Storage, remote: str, tmp_path: Path
 ) -> None:

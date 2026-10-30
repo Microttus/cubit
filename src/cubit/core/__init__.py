@@ -108,7 +108,14 @@ from cubit.core.storage import (
     Storage,
     resolve_data_dir,
 )
-from cubit.core.sync import SetupReport, SyncReport, run_sync, setup_sync
+from cubit.core.sync import (
+    SetupReport,
+    SyncReport,
+    is_configured,
+    is_repository,
+    run_sync,
+    setup_sync,
+)
 from cubit.core.timer import elapsed_minutes, elapsed_seconds, entry_from_timer, now_local
 
 __all__ = [
@@ -116,6 +123,8 @@ __all__ = [
     "SyncReport",
     "setup_sync",
     "run_sync",
+    "is_configured",
+    "is_repository",
     "DEFAULT_DATA_DIR",
     "ENTRY_COLUMNS",
     "UNSET",

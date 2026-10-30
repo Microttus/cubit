@@ -16,7 +16,14 @@ from cubit.core import (
     week_bounds,
 )
 from cubit.web import forms
-from cubit.web.views._shared import category_suggestions, pickable_projects, storage, today
+from cubit.web.views._shared import (
+    category_suggestions,
+    pickable_projects,
+    storage,
+    sync_after_change,
+    sync_before_change,
+    today,
+)
 
 bp = Blueprint("dashboard", __name__)
 
@@ -70,6 +77,7 @@ def healthz():
 def start():
     """FR-1."""
     store = storage()
+    sync_before_change(store)
     start_timer(
         store,
         forms.required(request.form, "project_id", "A project"),
@@ -83,12 +91,14 @@ def start():
 @bp.post("/timer/stop")
 def stop():
     """FR-2."""
+    store = storage()
     entry = stop_timer(
-        storage(),
+        store,
         note=forms.optional(request.form, "note"),
         category=forms.optional(request.form, "category"),
     )
     flash(f"Logged {entry.duration_minutes} minutes to {entry.project_id}.", "success")
+    sync_after_change(store)
     return redirect(url_for("dashboard.index"))
 
 

@@ -17,7 +17,14 @@ from cubit.core import (
     total_amount,
 )
 from cubit.web import forms
-from cubit.web.views._shared import category_suggestions, pickable_projects, storage, today
+from cubit.web.views._shared import (
+    category_suggestions,
+    pickable_projects,
+    storage,
+    sync_after_change,
+    sync_before_change,
+    today,
+)
 
 bp = Blueprint("entries", __name__, url_prefix="/entries")
 
@@ -84,6 +91,7 @@ def new():
 def create():
     """FR-5."""
     store = storage()
+    sync_before_change(store)
     entry = add_manual_entry(
         store,
         forms.required(request.form, "project_id", "A project"),
@@ -95,6 +103,7 @@ def create():
         force=forms.flag(request.form, "force"),
     )
     flash(f"Logged {entry.duration_minutes} minutes to {entry.project_id}.", "success")
+    sync_after_change(store)
     return redirect(url_for("entries.index"))
 
 

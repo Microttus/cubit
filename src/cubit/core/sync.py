@@ -68,6 +68,11 @@ def is_repository(storage: Storage) -> bool:
     return (storage.data_dir / ".git").exists()
 
 
+def is_configured(storage: Storage) -> bool:
+    """Whether the folder is a repository with a remote, so a sync can run."""
+    return is_repository(storage) and remote_url(storage) is not None
+
+
 def remote_url(storage: Storage) -> str | None:
     result = _git(storage, "remote", "get-url", REMOTE, check=False)
     return result.stdout.strip() if result.returncode == 0 else None

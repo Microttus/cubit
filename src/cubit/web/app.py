@@ -13,7 +13,7 @@ from typing import Any
 from flask import Flask, flash, redirect, render_template, request, url_for
 from markupsafe import Markup, escape
 
-from cubit.core import Config, CubitError, Storage, resolve_data_dir
+from cubit.core import Config, CubitError, Storage, is_repository, resolve_data_dir
 from cubit.web import views
 from cubit.web.filters import FILTERS
 from cubit.web.security import FIELD_NAME, check_csrf, csrf_token
@@ -70,6 +70,7 @@ def _template_context(storage: Storage) -> dict[str, Any]:
         "theme": config.theme,
         "currency": config.currency,
         "nav_active": request.blueprint or "",
+        "can_sync": is_repository(storage),
     }
 
 
