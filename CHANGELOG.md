@@ -19,6 +19,12 @@ breaking change and is listed under **Changed** with what to do about it.
   after an entry is added or a timer stopped, to upload it (FR-82). If a sync
   fails, the entry is still saved and a warning says why.
 
+### Fixed
+
+- When the menu bar app cannot start the web app, the log now says what the web
+  app printed, and it stops waiting as soon as the web app has exited instead of
+  after ten seconds.
+
 ## [0.3.1] - 2026-10-20
 
 ### Fixed

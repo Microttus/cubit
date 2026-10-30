@@ -13,9 +13,10 @@ import logging
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 #: What ``/healthz`` answers with, so a stranger on the port is not mistaken
@@ -61,6 +62,9 @@ class WebServer:
     port: int
     data_dir: Path | None = None
     process: subprocess.Popen | None = None
+    #: What the web app printed to stderr when it failed to come up, so a
+    #: failure says why instead of only that it timed out.
+    startup_error: str = field(default="", repr=False)
 
     @property
     def started_by_us(self) -> bool:
@@ -75,7 +79,7 @@ class WebServer:
         if is_cubit_running(self.port):
             return True
         if self.process is not None and self.process.poll() is None:
-            return _wait_until_healthy(self.port, wait)
+            return _wait_until_healthy(self.port, wait, self.process)
 
         command = self._command()
         if command is None:
@@ -83,22 +87,31 @@ class WebServer:
             return False
 
         log.info("starting the web app: %s", " ".join(command))
-        try:
-            self.process = subprocess.Popen(
-                command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                start_new_session=True,
-            )
-        except OSError:
-            log.exception("could not start the web app")
-            self.process = None
-            return False
+        self.startup_error = ""
+        with tempfile.TemporaryFile() as errors:
+            try:
+                self.process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.DEVNULL,
+                    stderr=errors,
+                    start_new_session=True,
+                )
+            except OSError:
+                log.exception("could not start the web app")
+                self.process = None
+                return False
 
-        if _wait_until_healthy(self.port, wait):
-            return True
+            if _wait_until_healthy(self.port, wait, self.process):
+                return True
 
-        log.error("the web app did not answer on port %s", self.port)
+            errors.seek(0)
+            self.startup_error = errors.read().decode("utf-8", errors="replace").strip()
+
+        log.error(
+            "the web app did not answer on port %s%s",
+            self.port,
+            f": {self.startup_error}" if self.startup_error else " (it printed nothing)",
+        )
         self.stop()
         return False
 
@@ -136,12 +149,15 @@ class WebServer:
         return [*command, "web", "--port", str(self.port)]
 
 
-def _wait_until_healthy(port: int, wait: float) -> bool:
+def _wait_until_healthy(port: int, wait: float, process: subprocess.Popen | None = None) -> bool:
+    """Wait for the port to answer, or for the process to give up first."""
     import time
 
     deadline = time.monotonic() + wait
     while time.monotonic() < deadline:
         if is_cubit_running(port):
             return True
+        if process is not None and process.poll() is not None:
+            return False
         time.sleep(0.2)
     return False

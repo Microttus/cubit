@@ -21,6 +21,9 @@ from cubit.menubar.server import (
     is_cubit_running,
 )
 
+#: A fresh CI runner can be slow to start a second Python process.
+SLOW_RUNNER = 30.0
+
 
 def free_port() -> int:
     import socket
@@ -140,7 +143,9 @@ def test_starting_and_stopping_a_real_web_app(sample_dir: Path) -> None:
     assert is_cubit_running(port) is False
 
     try:
-        assert server.ensure_running() is True, "the web app did not come up"
+        assert server.ensure_running(wait=SLOW_RUNNER) is True, (
+            f"the web app did not come up: {server.startup_error or 'it printed nothing'}"
+        )
         assert server.started_by_us is True
         assert is_cubit_running(port) is True
     finally:
@@ -154,9 +159,9 @@ def test_ensure_running_is_idempotent(sample_dir: Path) -> None:
     port = free_port()
     server = WebServer(port=port, data_dir=sample_dir)
     try:
-        assert server.ensure_running() is True
+        assert server.ensure_running(wait=SLOW_RUNNER) is True, server.startup_error
         first = server.process
-        assert server.ensure_running() is True
+        assert server.ensure_running(wait=SLOW_RUNNER) is True
         assert server.process is first  # not a second server
     finally:
         server.stop()
@@ -208,3 +213,11 @@ def test_a_frozen_app_never_looks_for_cubit_on_the_path(monkeypatch) -> None:
         "--port",
         "8000",
     ]
+
+
+def test_a_web_app_that_fails_to_start_says_why(tmp_path: Path) -> None:
+    server = WebServer(port=free_port(), data_dir=tmp_path / "no-such-folder")
+
+    assert server.ensure_running(wait=10) is False
+    assert "No cubit data folder" in server.startup_error
+    assert server.process is None
